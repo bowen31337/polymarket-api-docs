@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Polymarket API - Interactive Documentation</title>
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui.css">
+  <link rel="stylesheet" href="./custom/styles.css">
+  <link rel="icon" type="image/svg+xml" href="../assets/polymarket-logo.svg">
+</head>
+<body>
+  <!-- Wallet Connection Header -->
+  <div id="wallet-header" class="wallet-header">
+    <div class="header-content">
+      <div class="header-left">
+        <img src="../assets/polymarket-logo.svg" alt="Polymarket" class="logo">
+        <h1>API Documentation</h1>
+        <nav class="header-nav">
+          <a href="./index.html" class="active">Swagger UI</a>
+          <a href="../redoc/index.html">ReDoc</a>
+          <span class="nav-divider">|</span>
+          <a href="../openapi/polymarket-api.yaml" download="polymarket-api.yaml" class="download-link">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+            YAML
+          </a>
+          <a href="#" id="download-json" class="download-link">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+            JSON
+          </a>
+        </nav>
+      </div>
+      <div class="wallet-section">
+        <div id="network-badge" class="network-badge" style="display:none;">
+          <span class="network-dot"></span>
+          <span id="network-name">Polygon</span>
+        </div>
+        <div id="wallet-status" class="wallet-status disconnected">
+          <span id="wallet-address">Not Connected</span>
+        </div>
+        <button id="connect-wallet" class="btn btn-primary">
+          Connect MetaMask
+        </button>
+        <button id="disconnect-wallet" class="btn btn-secondary" style="display:none;">
+          Disconnect
+        </button>
+      </div>
+    </div>
+
+    <!-- API Credentials Panel -->
+    <div id="credentials-panel" class="credentials-panel" style="display:none;">
+      <div class="panel-section">
+        <h3>API Credentials</h3>
+        <p class="panel-description">Create or derive your L2 API credentials using your connected wallet.</p>
+        <div class="credentials-actions">
+          <button id="create-api-key" class="btn btn-success">
+            Create New API Key
+          </button>
+          <button id="derive-api-key" class="btn btn-info">
+            Derive Existing Key
+          </button>
+        </div>
+        <div id="credentials-display" class="credentials-display" style="display:none;">
+          <div class="credential-item">
+            <label>API Key:</label>
+            <code id="display-api-key"></code>
+            <button class="btn-copy" onclick="copyToClipboard('display-api-key')">Copy</button>
+          </div>
+          <div class="credential-item">
+            <label>Status:</label>
+            <span id="credentials-status" class="status-badge status-active">Active</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <h3>Signature Type</h3>
+        <select id="signature-type">
+          <option value="0">EOA - Standard Wallet (requires gas)</option>
+          <option value="1">POLY_PROXY - Magic Link Users</option>
+          <option value="2" selected>GNOSIS_SAFE - Browser Wallet (recommended)</option>
+        </select>
+        <p class="help-text">Most users should select GNOSIS_SAFE unless using Magic Link.</p>
+      </div>
+
+      <div class="panel-section">
+        <h3>Funder Address</h3>
+        <input type="text" id="funder-address" placeholder="0x... (your Polymarket profile address)">
+        <p class="help-text">Find this at <a href="https://polymarket.com/settings" target="_blank">polymarket.com/settings</a></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Swagger UI Container -->
+  <div id="swagger-ui"></div>
+
+  <!-- Toast Notifications -->
+  <div id="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui-bundle.js"></script>
+  <script src="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui-standalone-preset.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+  <script src="./custom/wallet-connector.js"></script>
+  <script src="./custom/eip712-signer.js"></script>
+  <script src="./custom/hmac-signer.js"></script>
+  <script src="./custom/swagger-plugin.js"></script>
+  <script>
+    // Compute absolute URL for the OpenAPI spec with cache busting
+    const specUrl = new URL('../openapi/polymarket-api.yaml?v=' + Date.now(), window.location.href).href;
+
+    // Initialize Swagger UI with custom plugin
+    window.ui = SwaggerUIBundle({
+      url: specUrl,
+      dom_id: '#swagger-ui',
+      deepLinking: true,
+      presets: [
+        SwaggerUIBundle.presets.apis,
+        SwaggerUIStandalonePreset
+      ],
+      plugins: [
+        SwaggerUIBundle.plugins.DownloadUrl,
+        PolymarketAuthPlugin
+      ],
+      layout: "StandaloneLayout",
+      requestInterceptor: polymarketRequestInterceptor,
+      persistAuthorization: true
+    });
+
+    // Utility function to copy to clipboard
+    function copyToClipboard(elementId) {
+      const text = document.getElementById(elementId).textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        showToast('Copied to clipboard!', 'success');
+      });
+    }
+
+    // Toast notification function
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      toast.textContent = message;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    }
+
+    window.showToast = showToast;
+
+    // JSON download functionality
+    document.getElementById('download-json').addEventListener('click', async (e) => {
+      e.preventDefault();
+      try {
+        const response = await fetch(specUrl);
+        const yamlText = await response.text();
+        // Use js-yaml from Swagger UI bundle to parse YAML
+        const jsonObj = window.ui.getConfigs().spec || jsyaml.load(yamlText);
+        const jsonStr = JSON.stringify(jsonObj, null, 2);
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'polymarket-api.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast('JSON downloaded!', 'success');
+      } catch (error) {
+        console.error('Download error:', error);
+        showToast('Failed to download JSON', 'error');
+      }
+    });
+  </script>
+</body>
+</html>

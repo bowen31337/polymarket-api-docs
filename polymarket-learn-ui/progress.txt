@@ -1,0 +1,112 @@
+# Polymarket Learn UI - Progress Log
+
+## Project Summary
+Interactive educational platform for Polymarket prediction markets.
+React 19 + React Router 7 + Vite 7 + Tailwind v4 + Framer Motion + GSAP
+
+## Current State (Initial Assessment)
+
+### Implemented Features
+- [x] Content loading system (modules.ts with Vite glob)
+- [x] Sidebar navigation with categories
+- [x] Lesson rendering with markdown
+- [x] Custom markdown components (note, tip, warning, videoplayer, steps)
+- [x] Table of contents for lessons
+- [x] Full-text search with ⌘K shortcut
+- [x] Progress tracking (localStorage)
+- [x] Category overview pages
+- [x] Landing page (Hero, Features, HowItWorks, FAQ, Footer)
+- [x] Welcome modal for first-time visitors
+- [x] Mobile responsive layout
+- [x] Basic Framer Motion animations
+- [x] Next/Previous lesson navigation
+- [x] Breadcrumbs
+
+### Build Status
+- TypeScript: Passes
+- Lint: Passes
+- Build: Passes (846KB bundle - needs optimization)
+
+### Patterns Observed
+- Dark theme with zinc/blue color palette
+- Components use motion from framer-motion for animations
+- GSAP registered but minimally used (only basic entrance in LessonView)
+- useProgress hook for localStorage-based progress
+- Custom markdown components mapped in LessonView
+
+---
+
+## Iteration Log
+
+### [Initial Setup]
+- Created prd.json with 10 stories for polish and optimization
+- Focus areas: code splitting, animations, accessibility, performance
+
+### [Session 1 - All Stories Complete]
+
+**US-001: Code Splitting**
+- Implemented React.lazy for all route components
+- Main bundle reduced from 846KB to ~307KB (63% reduction)
+- Created LoadingSpinner and InlineLoader fallbacks
+
+**US-002: GSAP ScrollTrigger**
+- Added scroll-triggered animations in LessonView
+- Headings, paragraphs, lists, code blocks, callouts all animate
+- Respects prefers-reduced-motion via prefersReducedMotion() check
+
+**US-003: Page Transitions**
+- Wrapped Outlet in AnimatePresence in Layout
+- LessonView and CategoryOverview use motion.div with exit animations
+- 250ms transition duration, respects reduced motion
+
+**US-004: Skip Link**
+- Created SkipLink component (sr-only until focused)
+- Added to both Layout and Landing pages
+- Uses focus:not-sr-only pattern for visibility
+
+**US-005: Focus Trap**
+- Implemented Tab/Shift+Tab cycling in Search modal
+- Focus returns to trigger element on close
+- Added role="dialog" and aria-modal
+
+**US-006: FAQ Keyboard Nav**
+- Full ARIA accordion pattern implemented
+- Arrow keys, Home/End navigation
+- aria-expanded, aria-controls, proper h3 structure
+
+**US-007: Reduced Motion**
+- MotionConfig reducedMotion="user" in main.tsx
+- LazyMotion for bundle optimization
+- GSAP checks prefersReducedMotion() before animating
+
+**US-008: aria-live**
+- Created AriaLiveProvider with useAriaLive hook
+- Search announces result counts
+- Lesson completion announced
+
+**US-009: Loading Skeleton**
+- Created LessonSkeleton matching actual layout
+- Uses animate-pulse for loading effect
+- Used as Suspense fallback for LessonView
+
+**US-010: Meta Tags**
+- useDocumentTitle and useMetaDescription hooks
+- Dynamic title updates on lesson/category change
+- Base meta tags in index.html
+
+---
+
+## Final Build Stats
+- Main bundle: ~307KB (gzip: ~100KB)
+- LessonView chunk: ~456KB (gzip: ~150KB) - includes GSAP + react-markdown
+- TypeScript: Passes
+- Build: Successful
+
+## Key Patterns Learned
+1. Use `as const` for Framer Motion transition ease values
+2. LazyMotion with MotionConfig reducedMotion="user" handles global reduced motion
+3. Skeleton components should NOT be lazy-loaded (they're the fallback)
+4. Focus traps need to store trigger element to return focus on close
+5. ARIA accordion needs button inside h3 for proper semantics
+
+---

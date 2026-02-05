@@ -1,0 +1,3545 @@
+openapi: 3.0.3
+info:
+  title: Polymarket API
+  version: 1.0.0
+  description: |
+    Complete API documentation for Polymarket prediction markets trading platform.
+
+    ## Base URLs
+
+    | Service | URL | Description |
+    |---------|-----|-------------|
+    | CLOB API | `https://clob.polymarket.com` | Central Limit Order Book - orders, trades, orderbook |
+    | Gamma API | `https://gamma-api.polymarket.com` | Market metadata, events, tags |
+    | Data API | `https://data-api.polymarket.com` | User positions, activity data |
+    | WebSocket | `wss://ws-subscriptions-clob.polymarket.com/ws/` | Real-time market and user data streams |
+
+    ## Authentication
+
+    Polymarket uses two levels of authentication:
+
+    ### L1 Authentication (EIP-712)
+    Used to create or derive API credentials. Requires wallet signature.
+
+    **Headers:**
+    - `POLY_ADDRESS`: Polygon signer address
+    - `POLY_SIGNATURE`: EIP-712 signature
+    - `POLY_TIMESTAMP`: Current UNIX timestamp
+    - `POLY_NONCE`: Nonce (default 0)
+
+    ### L2 Authentication (HMAC-SHA256)
+    Used for authenticated trading requests.
+
+    **Headers:**
+    - `POLY_ADDRESS`: Polygon signer address
+    - `POLY_SIGNATURE`: HMAC-SHA256 signature
+    - `POLY_TIMESTAMP`: Current UNIX timestamp
+    - `POLY_API_KEY`: API key from L1 auth
+    - `POLY_PASSPHRASE`: Passphrase from L1 auth
+
+    ## Signature Types
+
+    | Type | Value | Description |
+    |------|-------|-------------|
+    | EOA | 0 | Standard Ethereum wallet (MetaMask) |
+    | POLY_PROXY | 1 | Magic Link email/Google users |
+    | GNOSIS_SAFE | 2 | Gnosis Safe proxy wallet (most common) |
+
+  contact:
+    name: Polymarket Developer Support
+    url: https://docs.polymarket.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://clob.polymarket.com
+    description: CLOB API (Orders, Trades, Orderbook)
+  - url: https://gamma-api.polymarket.com
+    description: Gamma API (Markets, Events, Tags)
+  - url: https://data-api.polymarket.com
+    description: Data API (Positions, Analytics)
+
+# Default security is empty (public endpoints)
+# Authenticated endpoints specify their requirements in the description
+security: []
+
+tags:
+  - name: Authentication
+    description: L1 and L2 authentication endpoints
+  - name: Orders
+    description: Order creation, management, and cancellation
+  - name: Trades
+    description: Trade history and execution data
+  - name: Orderbook
+    description: Order book data and pricing
+  - name: Markets
+    description: Market discovery and metadata
+  - name: Events
+    description: Event information
+  - name: Positions
+    description: User position management and analytics
+  - name: Bridge
+    description: |
+      Deposit and withdrawal operations via the Bridge API.
+
+      **Base URL:** `https://bridge.polymarket.com`
+
+      Polymarket uses USDC.e (Bridged USDC from Ethereum) on Polygon as the native
+      collateral for all markets. The Bridge API enables users to deposit assets from
+      various chains and withdraw to external wallets.
+  - name: Status
+    description: API health and status
+  - name: WebSocket
+    description: |
+      Real-time streaming data via WebSocket connections.
+
+      **WebSocket URL:** `wss://ws-subscriptions-clob.polymarket.com/ws/`
+
+      ## Channels
+
+      | Channel | Auth Required | Description |
+      |---------|---------------|-------------|
+      | `market` | No | Public market data (orderbook, prices, trades) |
+      | `user` | Yes (API Key) | Private user data (orders, trades) |
+
+      ## Connection
+
+      Connect to the WebSocket URL and send a subscription message:
+
+      ```json
+      {
+        "auth": {
+          "apiKey": "your-api-key",
+          "secret": "your-secret",
+          "passphrase": "your-passphrase"
+        },
+        "type": "MARKET",
+        "assets_ids": ["token-id-1", "token-id-2"]
+      }
+      ```
+
+      ## Market Channel Events
+
+      - `book` - Full orderbook snapshot
+      - `price_change` - Price level updates
+      - `last_trade_price` - Trade execution prices
+      - `tick_size_change` - Tick size updates
+      - `best_bid_ask` - Best bid/ask updates (requires custom_feature_enabled)
+      - `new_market` - New market created (requires custom_feature_enabled)
+      - `market_resolved` - Market resolved (requires custom_feature_enabled)
+
+      ## User Channel Events
+
+      - `order` - Order placement, update, cancellation
+      - `trade` - Trade execution and status updates
+
+paths:
+  # ============================================
+  # AUTHENTICATION ENDPOINTS
+  # ============================================
+  /auth/api-key:
+    post:
+      tags:
+        - Authentication
+      summary: Create API Key
+      description: |
+        Create new API credentials using L1 (EIP-712) authentication.
+
+        **Requires L1 Authentication Headers**
+
+        Each wallet can only have one active API key at a time. Creating a new key
+        invalidates any previous key.
+      operationId: createApiKey
+      parameters:
+        - $ref: '#/components/parameters/PolyAddress'
+        - $ref: '#/components/parameters/PolySignatureL1'
+        - $ref: '#/components/parameters/PolyTimestamp'
+        - $ref: '#/components/parameters/PolyNonce'
+      responses:
+        '200':
+          description: API credentials created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiCredentials'
+              example:
+                apiKey: "550e8400-e29b-41d4-a716-446655440000"
+                secret: "base64EncodedSecretString"
+                passphrase: "randomPassphraseString"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/derive-api-key:
+    get:
+      tags:
+        - Authentication
+      summary: Derive API Key
+      description: |
+        Derive existing API credentials using L1 (EIP-712) authentication.
+
+        **Requires L1 Authentication Headers**
+
+        Use the same nonce that was used to create the credentials to recover them.
+      operationId: deriveApiKey
+      parameters:
+        - $ref: '#/components/parameters/PolyAddress'
+        - $ref: '#/components/parameters/PolySignatureL1'
+        - $ref: '#/components/parameters/PolyTimestamp'
+        - $ref: '#/components/parameters/PolyNonce'
+      responses:
+        '200':
+          description: API credentials derived successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiCredentials'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ============================================
+  # ORDER ENDPOINTS
+  # ============================================
+  /order:
+    post:
+      tags:
+        - Orders
+      summary: Place Order
+      description: |
+        Create and place a single order.
+
+        **Requires L2 Authentication Headers**
+
+        All orders are limit orders, but market orders are supported by setting
+        a marketable price. Order types:
+
+        - **GTC**: Good-Til-Cancelled - active until fulfilled or cancelled
+        - **GTD**: Good-Til-Date - active until specified timestamp
+        - **FOK**: Fill-Or-Kill - must fill completely or cancel
+        - **FAK**: Fill-And-Kill - partial fills allowed, rest cancelled
+      operationId: placeOrder
+      parameters:
+        - $ref: '#/components/parameters/PolyAddress'
+        - $ref: '#/components/parameters/PolySignatureL2'
+        - $ref: '#/components/parameters/PolyTimestamp'
+        - $ref: '#/components/parameters/PolyApiKey'
+        - $ref: '#/components/parameters/PolyPassphrase'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderRequest'
+            example:
+              order:
+                salt: "12345678901234567890"
+                maker: "0x742d35Cc6634C0532925a3b844Bc9e7595f55555"
+                signer: "0x742d35Cc6634C0532925a3b844Bc9e7595f55555"
+                taker: "0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E"
+                tokenId: "71321045679252212594626385532706912750332728571942532289631379312455583992563"
+                makerAmount: "50000000"
+                takerAmount: "100000000"
+                expiration: "0"
+                nonce: "0"
+                feeRateBps: "0"
+                side: "BUY"
+                signatureType: 2
+                signature: "0x..."
+              owner: "550e8400-e29b-41d4-a716-446655440000"
+              orderType: "GTC"
+              postOnly: false
+      responses:
+        '200':
+          description: Order placed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /orders:
+    get:
+      tags:
+        - Orders
+      summary: Get Orders
+      description: |
+        Get all orders for the authenticated user.
+
+        **Requires L2 Authentication Headers**
+      operationId: getOrders
+      parameters:
+        - $ref: '#/components/parameters/PolyAddress'
+        - $ref: '#/components/parameters/PolySignatureL2'
+        - $ref: '#/components/parameters/PolyTimestamp'
+        - $ref: '#/components/parameters/PolyApiKey'
+        - $ref: '#/components/parameters/PolyPassphrase'
+        - name: market
+          in: query
+          description: Filter by market condition ID
+          schema:
+            type: string
+        - name: asset_id
+          in: query
+          description: Filter by token ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OpenOrder'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /cancel:
+    delete:
+      tags:
+        - Orders
+      summary: Cancel Order
+      description: |
+        Cancel a specific order by ID.
+
+        **Requires L2 Authentication Headers**
+      operationId: cancelOrder
+      parameters:
+        - $ref: '#/components/parameters/PolyAddress'
+        - $ref: '#/components/parameters/PolySignatureL2'
+        - $ref: '#/components/parameters/PolyTimestamp'
+        - $ref: '#/components/parameters/PolyApiKey'
+        - $ref: '#/components/parameters/PolyPassphrase'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - orderID
+              properties:
+                orderID:
+                  type: string
+                  description: ID of the order to cancel
+      responses:
+        '200':
+          description: Order cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CancelResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /cancel-all:
+    delete:
+      tags:
+        - Orders
+      summary: Cancel All Orders
+      description: |
+        Cancel all open orders for the authenticated user.
+
+        **Requires L2 Authentication Headers**
+      operationId: cancelAllOrders
+      parameters:
+        - $ref: '#/components/parameters/PolyAddress'
+        - $ref: '#/components/parameters/PolySignatureL2'
+        - $ref: '#/components/parameters/PolyTimestamp'
+        - $ref: '#/components/parameters/PolyApiKey'
+        - $ref: '#/components/parameters/PolyPassphrase'
+      responses:
+        '200':
+          description: All orders cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CancelResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ============================================
+  # TRADE ENDPOINTS
+  # ============================================
+  /data/trades:
+    get:
+      tags:
+        - Trades
+      summary: Get Trades
+      description: |
+        Get trade history for the authenticated user.
+
+        **Requires L2 Authentication Headers**
+      operationId: getTrades
+      parameters:
+        - $ref: '#/components/parameters/PolyAddress'
+        - $ref: '#/components/parameters/PolySignatureL2'
+        - $ref: '#/components/parameters/PolyTimestamp'
+        - $ref: '#/components/parameters/PolyApiKey'
+        - $ref: '#/components/parameters/PolyPassphrase'
+        - name: market
+          in: query
+          description: Filter by market condition ID
+          schema:
+            type: string
+        - name: maker
+          in: query
+          description: Filter by maker address
+          schema:
+            type: string
+        - name: before
+          in: query
+          description: Unix timestamp cutoff (trades before this time)
+          schema:
+            type: integer
+        - name: after
+          in: query
+          description: Unix timestamp cutoff (trades after this time)
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of trades
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Trade'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ============================================
+  # ORDERBOOK ENDPOINTS
+  # ============================================
+  /book:
+    get:
+      tags:
+        - Orderbook
+      summary: Get Order Book
+      description: |
+        Get the order book summary for a specific token.
+
+        **Public endpoint - no authentication required**
+      operationId: getOrderBook
+      parameters:
+        - name: token_id
+          in: query
+          required: true
+          description: ERC1155 token ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Order book summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderBookSummary'
+
+  /books:
+    get:
+      tags:
+        - Orderbook
+      summary: Get Multiple Order Books
+      description: |
+        Get order book summaries for multiple tokens.
+
+        **Public endpoint - no authentication required**
+      operationId: getOrderBooks
+      parameters:
+        - name: token_ids
+          in: query
+          required: true
+          description: Comma-separated list of token IDs
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Multiple order book summaries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OrderBookSummary'
+
+  # ============================================
+  # PRICING ENDPOINTS
+  # ============================================
+  /price:
+    get:
+      tags:
+        - Orderbook
+      summary: Get Market Price
+      description: |
+        Get the current market price for a token.
+
+        **Public endpoint - no authentication required**
+      operationId: getPrice
+      parameters:
+        - name: token_id
+          in: query
+          required: true
+          description: ERC1155 token ID
+          schema:
+            type: string
+        - name: side
+          in: query
+          required: true
+          description: Order side (BUY or SELL)
+          schema:
+            type: string
+            enum: [BUY, SELL]
+      responses:
+        '200':
+          description: Market price
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  price:
+                    type: string
+                    description: Current market price
+
+  /midpoint:
+    get:
+      tags:
+        - Orderbook
+      summary: Get Midpoint Price
+      description: |
+        Get the midpoint price between best bid and ask.
+
+        **Public endpoint - no authentication required**
+      operationId: getMidpoint
+      parameters:
+        - name: token_id
+          in: query
+          required: true
+          description: ERC1155 token ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Midpoint price
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mid:
+                    type: string
+                    description: Midpoint price
+
+  /spread:
+    get:
+      tags:
+        - Orderbook
+      summary: Get Bid-Ask Spread
+      description: |
+        Get the bid-ask spread for a token.
+
+        **Public endpoint - no authentication required**
+      operationId: getSpread
+      parameters:
+        - name: token_id
+          in: query
+          required: true
+          description: ERC1155 token ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Spread information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpreadInfo'
+
+  # ============================================
+  # MARKET ENDPOINTS (Gamma API)
+  # ============================================
+  /markets:
+    get:
+      tags:
+        - Markets
+      summary: List Markets
+      description: |
+        Get a list of all available markets with filtering options.
+
+        **Public endpoint - no authentication required**
+
+        **Base URL: https://gamma-api.polymarket.com**
+      operationId: listMarkets
+      servers:
+        - url: https://gamma-api.polymarket.com
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of results
+          schema:
+            type: integer
+            default: 100
+        - name: offset
+          in: query
+          description: Offset for pagination
+          schema:
+            type: integer
+            default: 0
+        - name: active
+          in: query
+          description: Filter by active status
+          schema:
+            type: boolean
+        - name: closed
+          in: query
+          description: Filter by closed status
+          schema:
+            type: boolean
+        - name: order
+          in: query
+          description: Sort order field
+          schema:
+            type: string
+            enum: [volume, liquidity, startDate, endDate]
+        - name: ascending
+          in: query
+          description: Sort ascending
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: List of markets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Market'
+
+  /markets/{conditionId}:
+    get:
+      tags:
+        - Markets
+      summary: Get Market by ID
+      description: |
+        Get detailed information about a specific market.
+
+        **Public endpoint - no authentication required**
+
+        **Base URL: https://gamma-api.polymarket.com**
+      operationId: getMarketById
+      servers:
+        - url: https://gamma-api.polymarket.com
+      parameters:
+        - name: conditionId
+          in: path
+          required: true
+          description: Market condition ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Market details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Market'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ============================================
+  # EVENT ENDPOINTS (Gamma API)
+  # ============================================
+  /events:
+    get:
+      tags:
+        - Events
+      summary: List Events
+      description: |
+        Get a list of all events.
+
+        **Public endpoint - no authentication required**
+
+        **Base URL: https://gamma-api.polymarket.com**
+      operationId: listEvents
+      servers:
+        - url: https://gamma-api.polymarket.com
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: active
+          in: query
+          schema:
+            type: boolean
+        - name: slug
+          in: query
+          description: Filter by event slug
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Event'
+
+  /events/{eventId}:
+    get:
+      tags:
+        - Events
+      summary: Get Event by ID
+      description: |
+        Get detailed information about a specific event.
+
+        **Base URL: https://gamma-api.polymarket.com**
+      operationId: getEventById
+      servers:
+        - url: https://gamma-api.polymarket.com
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Event details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ============================================
+  # POSITION ENDPOINTS (Data API)
+  # ============================================
+  /positions:
+    get:
+      tags:
+        - Positions
+      summary: Get User Positions
+      description: |
+        Get current positions for a user.
+
+        **Public endpoint - no authentication required**
+
+        **Base URL: https://data-api.polymarket.com**
+      operationId: getPositions
+      servers:
+        - url: https://data-api.polymarket.com
+      parameters:
+        - name: user
+          in: query
+          required: true
+          description: User wallet address
+          schema:
+            type: string
+        - name: market
+          in: query
+          description: Filter by market ID
+          schema:
+            type: string
+        - name: sizeThreshold
+          in: query
+          description: Minimum position size
+          schema:
+            type: number
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: User positions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Position'
+
+  # ============================================
+  # STATUS ENDPOINTS
+  # ============================================
+  /ok:
+    get:
+      tags:
+        - Status
+      summary: Health Check
+      description: Check if the CLOB API is operational
+      operationId: healthCheck
+      responses:
+        '200':
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+
+  /time:
+    get:
+      tags:
+        - Status
+      summary: Get Server Time
+      description: Get the current server timestamp
+      operationId: getServerTime
+      responses:
+        '200':
+          description: Server timestamp
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  timestamp:
+                    type: integer
+                    description: Current UNIX timestamp
+
+  # ============================================
+  # WEBSOCKET ENDPOINTS (Informational)
+  # ============================================
+  /ws/market:
+    get:
+      tags:
+        - WebSocket
+      summary: Market Channel (WebSocket)
+      description: |
+        **WebSocket URL:** `wss://ws-subscriptions-clob.polymarket.com/ws/market`
+
+        Real-time public market data stream. No authentication required.
+
+        ## Subscription Message
+
+        ```json
+        {
+          "type": "MARKET",
+          "assets_ids": ["token-id-1", "token-id-2"],
+          "custom_feature_enabled": true
+        }
+        ```
+
+        ## Events Received
+
+        | Event | Description |
+        |-------|-------------|
+        | `book` | Full orderbook snapshot |
+        | `price_change` | Price level updates when orders placed/cancelled |
+        | `last_trade_price` | Trade execution price |
+        | `tick_size_change` | Minimum tick size changed |
+        | `best_bid_ask` | Best bid/ask updates (requires custom_feature_enabled) |
+        | `new_market` | New market created (requires custom_feature_enabled) |
+        | `market_resolved` | Market resolved (requires custom_feature_enabled) |
+
+        ## Subscribe to Additional Assets
+
+        After connected, send:
+        ```json
+        {
+          "assets_ids": ["new-token-id"],
+          "operation": "subscribe"
+        }
+        ```
+      operationId: wsMarketChannel
+      responses:
+        '101':
+          description: WebSocket upgrade - not a REST endpoint
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WsBookMessage'
+
+  /ws/user:
+    get:
+      tags:
+        - WebSocket
+      summary: User Channel (WebSocket)
+      description: |
+        **WebSocket URL:** `wss://ws-subscriptions-clob.polymarket.com/ws/user`
+
+        Real-time private user data stream. **Authentication required.**
+
+        ## Subscription Message
+
+        ```json
+        {
+          "auth": {
+            "apiKey": "your-api-key",
+            "secret": "your-secret",
+            "passphrase": "your-passphrase"
+          },
+          "type": "USER",
+          "markets": ["condition-id-1", "condition-id-2"]
+        }
+        ```
+
+        ## Events Received
+
+        | Event | Description |
+        |-------|-------------|
+        | `order` | Order placement, update, or cancellation |
+        | `trade` | Trade matched, mined, confirmed, or failed |
+
+        ## Order Event Types
+
+        - `PLACEMENT` - New order placed
+        - `UPDATE` - Order partially filled
+        - `CANCELLATION` - Order cancelled
+
+        ## Trade Statuses
+
+        - `MATCHED` - Trade matched on orderbook
+        - `MINED` - Transaction included in block
+        - `CONFIRMED` - Transaction confirmed
+        - `RETRYING` - Transaction being retried
+        - `FAILED` - Transaction failed
+      operationId: wsUserChannel
+      responses:
+        '101':
+          description: WebSocket upgrade - not a REST endpoint
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WsTradeMessage'
+
+  # ============================================
+  # ADDITIONAL CLOB ENDPOINTS
+  # ============================================
+  /prices:
+    get:
+      tags:
+        - Orderbook
+      summary: Get Multiple Market Prices
+      description: |
+        Retrieves market prices for multiple tokens and sides.
+
+        **Public endpoint - no authentication required**
+      operationId: getPrices
+      responses:
+        '200':
+          description: Map of token_id to side to price
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: object
+                  properties:
+                    BUY:
+                      type: string
+                    SELL:
+                      type: string
+
+  /prices-history:
+    get:
+      tags:
+        - Orderbook
+      summary: Get Price History
+      description: |
+        Fetches historical price data for a specified market token.
+
+        **Public endpoint - no authentication required**
+      operationId: getPriceHistory
+      parameters:
+        - name: market
+          in: query
+          required: true
+          description: CLOB token ID
+          schema:
+            type: string
+        - name: startTs
+          in: query
+          description: Start time (Unix timestamp UTC)
+          schema:
+            type: number
+        - name: endTs
+          in: query
+          description: End time (Unix timestamp UTC)
+          schema:
+            type: number
+        - name: interval
+          in: query
+          description: Duration ending at current time (mutually exclusive with startTs/endTs)
+          schema:
+            type: string
+            enum: [1m, 1w, 1d, 6h, 1h, max]
+        - name: fidelity
+          in: query
+          description: Resolution in minutes
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Price history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriceHistoryResponse'
+
+  /cancel-orders:
+    delete:
+      tags:
+        - Orders
+      summary: Cancel Multiple Orders
+      description: |
+        Cancel multiple orders by ID.
+
+        **Requires L2 Authentication Headers**
+      operationId: cancelOrders
+      parameters:
+        - $ref: '#/components/parameters/PolyAddress'
+        - $ref: '#/components/parameters/PolySignatureL2'
+        - $ref: '#/components/parameters/PolyTimestamp'
+        - $ref: '#/components/parameters/PolyApiKey'
+        - $ref: '#/components/parameters/PolyPassphrase'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - orderIDs
+              properties:
+                orderIDs:
+                  type: array
+                  items:
+                    type: string
+                  description: List of order IDs to cancel
+      responses:
+        '200':
+          description: Orders cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CancelResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /cancel-market-orders:
+    delete:
+      tags:
+        - Orders
+      summary: Cancel All Orders for Market
+      description: |
+        Cancel all orders for a specific market.
+
+        **Requires L2 Authentication Headers**
+      operationId: cancelMarketOrders
+      parameters:
+        - $ref: '#/components/parameters/PolyAddress'
+        - $ref: '#/components/parameters/PolySignatureL2'
+        - $ref: '#/components/parameters/PolyTimestamp'
+        - $ref: '#/components/parameters/PolyApiKey'
+        - $ref: '#/components/parameters/PolyPassphrase'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - market
+              properties:
+                market:
+                  type: string
+                  description: Market condition ID
+                asset_id:
+                  type: string
+                  description: Optional token ID filter
+      responses:
+        '200':
+          description: Orders cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CancelResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /balance-allowance:
+    get:
+      tags:
+        - Orders
+      summary: Get Balance and Allowance
+      description: |
+        Get the user's USDC balance and contract allowance.
+
+        **Requires L2 Authentication Headers**
+      operationId: getBalanceAllowance
+      parameters:
+        - $ref: '#/components/parameters/PolyAddress'
+        - $ref: '#/components/parameters/PolySignatureL2'
+        - $ref: '#/components/parameters/PolyTimestamp'
+        - $ref: '#/components/parameters/PolyApiKey'
+        - $ref: '#/components/parameters/PolyPassphrase'
+        - name: asset_type
+          in: query
+          description: Asset type (COLLATERAL or CONDITIONAL)
+          schema:
+            type: string
+            enum: [COLLATERAL, CONDITIONAL]
+        - name: token_id
+          in: query
+          description: Token ID (required for CONDITIONAL)
+          schema:
+            type: string
+        - name: signature_type
+          in: query
+          description: Signature type (0=EOA, 1=POLY_PROXY, 2=GNOSIS_SAFE)
+          schema:
+            type: integer
+            enum: [0, 1, 2]
+      responses:
+        '200':
+          description: Balance and allowance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BalanceAllowance'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /tick-size:
+    get:
+      tags:
+        - Orderbook
+      summary: Get Tick Size
+      description: |
+        Get the minimum tick size for a token.
+
+        **Public endpoint - no authentication required**
+      operationId: getTickSize
+      parameters:
+        - name: token_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Tick size
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  minimum_tick_size:
+                    type: string
+                  minimum_order_size:
+                    type: string
+
+  /neg-risk:
+    get:
+      tags:
+        - Orderbook
+      summary: Check Negative Risk
+      description: |
+        Check if a market uses negative risk.
+
+        **Public endpoint - no authentication required**
+      operationId: getNegRisk
+      parameters:
+        - name: token_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Negative risk status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  neg_risk:
+                    type: boolean
+
+  # ============================================
+  # DATA API ENDPOINTS
+  # ============================================
+  /closed-positions:
+    get:
+      tags:
+        - Positions
+      summary: Get Closed Positions
+      description: |
+        Fetches closed positions for a user.
+
+        **Public endpoint - no authentication required**
+
+        **Base URL: https://data-api.polymarket.com**
+      operationId: getClosedPositions
+      servers:
+        - url: https://data-api.polymarket.com
+      parameters:
+        - name: user
+          in: query
+          required: true
+          description: User wallet address
+          schema:
+            type: string
+            pattern: ^0x[a-fA-F0-9]{40}$
+        - name: market
+          in: query
+          description: Comma-separated condition IDs
+          schema:
+            type: string
+        - name: title
+          in: query
+          description: Filter by market title
+          schema:
+            type: string
+            maxLength: 100
+        - name: eventId
+          in: query
+          description: Comma-separated event IDs
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+            maximum: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            enum: [REALIZEDPNL, TITLE, PRICE, AVGPRICE, TIMESTAMP]
+            default: REALIZEDPNL
+        - name: sortDirection
+          in: query
+          schema:
+            type: string
+            enum: [ASC, DESC]
+            default: DESC
+      responses:
+        '200':
+          description: Closed positions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ClosedPosition'
+
+  /activity:
+    get:
+      tags:
+        - Positions
+      summary: Get User Activity
+      description: |
+        Returns on-chain activity for a user.
+
+        **Public endpoint - no authentication required**
+
+        **Base URL: https://data-api.polymarket.com**
+      operationId: getUserActivity
+      servers:
+        - url: https://data-api.polymarket.com
+      parameters:
+        - name: user
+          in: query
+          required: true
+          schema:
+            type: string
+            pattern: ^0x[a-fA-F0-9]{40}$
+        - name: market
+          in: query
+          description: Comma-separated condition IDs
+          schema:
+            type: string
+        - name: eventId
+          in: query
+          description: Comma-separated event IDs
+          schema:
+            type: string
+        - name: type
+          in: query
+          description: Activity types filter
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [TRADE, SPLIT, MERGE, REDEEM, REWARD, CONVERSION, MAKER_REBATE]
+        - name: start
+          in: query
+          schema:
+            type: integer
+        - name: end
+          in: query
+          schema:
+            type: integer
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            enum: [TIMESTAMP, TOKENS, CASH]
+            default: TIMESTAMP
+        - name: sortDirection
+          in: query
+          schema:
+            type: string
+            enum: [ASC, DESC]
+            default: DESC
+        - name: side
+          in: query
+          schema:
+            type: string
+            enum: [BUY, SELL]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+            maximum: 500
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: User activity
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Activity'
+
+  /v1/leaderboard:
+    get:
+      tags:
+        - Positions
+      summary: Get Trader Leaderboard
+      description: |
+        Returns trader leaderboard rankings.
+
+        **Public endpoint - no authentication required**
+
+        **Base URL: https://data-api.polymarket.com**
+      operationId: getTraderLeaderboard
+      servers:
+        - url: https://data-api.polymarket.com
+      parameters:
+        - name: timePeriod
+          in: query
+          schema:
+            type: string
+            enum: [DAY, WEEK, MONTH, ALL]
+            default: DAY
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 25
+            maximum: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Leaderboard entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LeaderboardEntry'
+
+  /v1/builders/leaderboard:
+    get:
+      tags:
+        - Positions
+      summary: Get Builder Leaderboard
+      description: |
+        Returns aggregated builder rankings.
+
+        **Public endpoint - no authentication required**
+
+        **Base URL: https://data-api.polymarket.com**
+      operationId: getBuilderLeaderboard
+      servers:
+        - url: https://data-api.polymarket.com
+      parameters:
+        - name: timePeriod
+          in: query
+          schema:
+            type: string
+            enum: [DAY, WEEK, MONTH, ALL]
+            default: DAY
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 25
+            maximum: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Builder leaderboard
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BuilderLeaderboardEntry'
+
+  /live-volume:
+    get:
+      tags:
+        - Positions
+      summary: Get Live Event Volume
+      description: |
+        Get live trading volume for an event.
+
+        **Public endpoint - no authentication required**
+
+        **Base URL: https://data-api.polymarket.com**
+      operationId: getLiveVolume
+      servers:
+        - url: https://data-api.polymarket.com
+      parameters:
+        - name: id
+          in: query
+          required: true
+          description: Event ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Live volume
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LiveVolume'
+
+  /oi:
+    get:
+      tags:
+        - Positions
+      summary: Get Open Interest
+      description: |
+        Get open interest for markets.
+
+        **Public endpoint - no authentication required**
+
+        **Base URL: https://data-api.polymarket.com**
+      operationId: getOpenInterest
+      servers:
+        - url: https://data-api.polymarket.com
+      parameters:
+        - name: market
+          in: query
+          description: Comma-separated condition IDs
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Open interest
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OpenInterestItem'
+
+  /traded:
+    get:
+      tags:
+        - Positions
+      summary: Get Markets Traded
+      description: |
+        Get total number of markets a user has traded.
+
+        **Public endpoint - no authentication required**
+
+        **Base URL: https://data-api.polymarket.com**
+      operationId: getMarketsTraded
+      servers:
+        - url: https://data-api.polymarket.com
+      parameters:
+        - name: user
+          in: query
+          required: true
+          schema:
+            type: string
+            pattern: ^0x[a-fA-F0-9]{40}$
+      responses:
+        '200':
+          description: Markets traded count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+
+  /holders:
+    get:
+      tags:
+        - Positions
+      summary: Get Top Holders
+      description: |
+        Get top token holders for markets.
+
+        **Public endpoint - no authentication required**
+
+        **Base URL: https://data-api.polymarket.com**
+      operationId: getTopHolders
+      servers:
+        - url: https://data-api.polymarket.com
+      parameters:
+        - name: market
+          in: query
+          required: true
+          description: Condition ID
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Top holders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Holder'
+
+  /value:
+    get:
+      tags:
+        - Positions
+      summary: Get Position Value
+      description: |
+        Get total value of a user's positions.
+
+        **Public endpoint - no authentication required**
+
+        **Base URL: https://data-api.polymarket.com**
+      operationId: getPositionValue
+      servers:
+        - url: https://data-api.polymarket.com
+      parameters:
+        - name: user
+          in: query
+          required: true
+          schema:
+            type: string
+            pattern: ^0x[a-fA-F0-9]{40}$
+      responses:
+        '200':
+          description: Position value
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  value:
+                    type: number
+
+  # ============================================
+  # BRIDGE API ENDPOINTS
+  # ============================================
+  /supported-assets:
+    get:
+      tags:
+        - Bridge
+      summary: Get Supported Assets
+      description: |
+        Retrieve all supported chains and tokens for deposits and withdrawals.
+
+        **Public endpoint - no authentication required**
+
+        **Base URL: https://bridge.polymarket.com**
+
+        Polymarket uses USDC.e (Bridged USDC from Ethereum) on Polygon as the native
+        collateral for all markets.
+      operationId: getSupportedAssets
+      servers:
+        - url: https://bridge.polymarket.com
+      responses:
+        '200':
+          description: Supported assets
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupportedAssetsResponse'
+
+  /deposit:
+    post:
+      tags:
+        - Bridge
+      summary: Create Deposit Addresses
+      description: |
+        Generate unique deposit addresses for depositing assets to your Polymarket wallet.
+
+        **Public endpoint - no authentication required**
+
+        **Base URL: https://bridge.polymarket.com**
+
+        Returns deposit addresses for EVM, Solana, and Bitcoin networks.
+      operationId: createDepositAddresses
+      servers:
+        - url: https://bridge.polymarket.com
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - address
+              properties:
+                address:
+                  type: string
+                  pattern: ^0x[a-fA-F0-9]{40}$
+                  description: Your Polymarket wallet address
+      responses:
+        '201':
+          description: Deposit addresses created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DepositResponse'
+
+  /withdraw:
+    post:
+      tags:
+        - Bridge
+      summary: Create Withdrawal Addresses
+      description: |
+        Generate addresses for withdrawing USDC.e from Polymarket to external wallets.
+
+        **Public endpoint - no authentication required**
+
+        **Base URL: https://bridge.polymarket.com**
+      operationId: createWithdrawalAddresses
+      servers:
+        - url: https://bridge.polymarket.com
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - address
+              properties:
+                address:
+                  type: string
+                  description: Destination wallet address
+      responses:
+        '201':
+          description: Withdrawal addresses created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DepositResponse'
+
+  /quote:
+    post:
+      tags:
+        - Bridge
+      summary: Get Bridge Quote
+      description: |
+        Get an estimated quote for a deposit or withdrawal, including fees and estimated output.
+
+        **Public endpoint - no authentication required**
+
+        **Base URL: https://bridge.polymarket.com**
+      operationId: getBridgeQuote
+      servers:
+        - url: https://bridge.polymarket.com
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuoteRequest'
+      responses:
+        '200':
+          description: Quote details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuoteResponse'
+
+  /status/{address}:
+    get:
+      tags:
+        - Bridge
+      summary: Get Transaction Status
+      description: |
+        Get the transaction status for all deposits and withdrawals associated with an address.
+
+        **Public endpoint - no authentication required**
+
+        **Base URL: https://bridge.polymarket.com**
+
+        **Status Values:**
+        - `DEPOSIT_DETECTED` - Funds detected but not yet processing
+        - `PROCESSING` - Transaction being routed and swapped
+        - `ORIGIN_TX_CONFIRMED` - Confirmed on source chain
+        - `SUBMITTED` - Submitted to destination chain
+        - `COMPLETED` - Successfully completed
+        - `FAILED` - Transaction failed
+      operationId: getTransactionStatus
+      servers:
+        - url: https://bridge.polymarket.com
+      parameters:
+        - name: address
+          in: path
+          required: true
+          description: Deposit/withdrawal address (EVM, SVM, or BTC)
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Transaction status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionStatusResponse'
+
+  # ============================================
+  # GAMMA API - SERIES ENDPOINTS
+  # ============================================
+  /series:
+    get:
+      tags:
+        - Events
+      summary: List Series
+      description: |
+        Get a list of all series.
+
+        **Public endpoint - no authentication required**
+
+        **Base URL: https://gamma-api.polymarket.com**
+      operationId: listSeries
+      servers:
+        - url: https://gamma-api.polymarket.com
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          schema:
+            type: integer
+        - name: order
+          in: query
+          schema:
+            type: string
+        - name: ascending
+          in: query
+          schema:
+            type: boolean
+        - name: slug
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: closed
+          in: query
+          schema:
+            type: boolean
+        - name: recurrence
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of series
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Series'
+
+  /series/{seriesId}:
+    get:
+      tags:
+        - Events
+      summary: Get Series by ID
+      description: |
+        Get detailed information about a specific series.
+
+        **Base URL: https://gamma-api.polymarket.com**
+      operationId: getSeriesById
+      servers:
+        - url: https://gamma-api.polymarket.com
+      parameters:
+        - name: seriesId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Series details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Series'
+
+  # ============================================
+  # GAMMA API - TAGS ENDPOINTS
+  # ============================================
+  /tags:
+    get:
+      tags:
+        - Events
+      summary: List Tags
+      description: |
+        Get a list of all tags.
+
+        **Public endpoint - no authentication required**
+
+        **Base URL: https://gamma-api.polymarket.com**
+      operationId: listTags
+      servers:
+        - url: https://gamma-api.polymarket.com
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          schema:
+            type: integer
+        - name: order
+          in: query
+          schema:
+            type: string
+        - name: ascending
+          in: query
+          schema:
+            type: boolean
+        - name: include_template
+          in: query
+          schema:
+            type: boolean
+        - name: is_carousel
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: List of tags
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Tag'
+
+  /tags/{tagId}:
+    get:
+      tags:
+        - Events
+      summary: Get Tag by ID
+      description: |
+        Get a specific tag by ID.
+
+        **Base URL: https://gamma-api.polymarket.com**
+      operationId: getTagById
+      servers:
+        - url: https://gamma-api.polymarket.com
+      parameters:
+        - name: tagId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Tag details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tag'
+
+  /tags/slug/{slug}:
+    get:
+      tags:
+        - Events
+      summary: Get Tag by Slug
+      description: |
+        Get a specific tag by slug.
+
+        **Base URL: https://gamma-api.polymarket.com**
+      operationId: getTagBySlug
+      servers:
+        - url: https://gamma-api.polymarket.com
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Tag details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tag'
+
+  # ============================================
+  # GAMMA API - SEARCH & PROFILE ENDPOINTS
+  # ============================================
+  /public-search:
+    get:
+      tags:
+        - Markets
+      summary: Search Markets, Events, and Profiles
+      description: |
+        Search across markets, events, and user profiles.
+
+        **Public endpoint - no authentication required**
+
+        **Base URL: https://gamma-api.polymarket.com**
+      operationId: publicSearch
+      servers:
+        - url: https://gamma-api.polymarket.com
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Search query
+          schema:
+            type: string
+        - name: cache
+          in: query
+          schema:
+            type: boolean
+        - name: events_status
+          in: query
+          schema:
+            type: string
+        - name: limit_per_type
+          in: query
+          schema:
+            type: integer
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: events_tag
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: sort
+          in: query
+          schema:
+            type: string
+        - name: ascending
+          in: query
+          schema:
+            type: boolean
+        - name: search_tags
+          in: query
+          schema:
+            type: boolean
+        - name: search_profiles
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResults'
+
+  /public-profile:
+    get:
+      tags:
+        - Positions
+      summary: Get Public Profile
+      description: |
+        Get public profile by wallet address.
+
+        **Public endpoint - no authentication required**
+
+        **Base URL: https://gamma-api.polymarket.com**
+      operationId: getPublicProfile
+      servers:
+        - url: https://gamma-api.polymarket.com
+      parameters:
+        - name: address
+          in: query
+          required: true
+          description: Wallet address (proxy wallet or user address)
+          schema:
+            type: string
+            pattern: ^0x[a-fA-F0-9]{40}$
+      responses:
+        '200':
+          description: Public profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicProfile'
+        '404':
+          description: Profile not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ============================================
+  # GAMMA API - ADDITIONAL MARKET/EVENT ENDPOINTS
+  # ============================================
+  /markets/slug/{slug}:
+    get:
+      tags:
+        - Markets
+      summary: Get Market by Slug
+      description: |
+        Get a market by its URL slug.
+
+        **Public endpoint - no authentication required**
+
+        **Base URL: https://gamma-api.polymarket.com**
+      operationId: getMarketBySlug
+      servers:
+        - url: https://gamma-api.polymarket.com
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Market details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Market'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /events/slug/{slug}:
+    get:
+      tags:
+        - Events
+      summary: Get Event by Slug
+      description: |
+        Get an event by its URL slug.
+
+        **Public endpoint - no authentication required**
+
+        **Base URL: https://gamma-api.polymarket.com**
+      operationId: getEventBySlug
+      servers:
+        - url: https://gamma-api.polymarket.com
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Event details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ============================================
+  # GAMMA API - SPORTS ENDPOINTS
+  # ============================================
+  /sports:
+    get:
+      tags:
+        - Events
+      summary: Get Sports Metadata
+      description: |
+        Get sports metadata information.
+
+        **Public endpoint - no authentication required**
+
+        **Base URL: https://gamma-api.polymarket.com**
+      operationId: getSportsMetadata
+      servers:
+        - url: https://gamma-api.polymarket.com
+      responses:
+        '200':
+          description: Sports metadata
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /teams:
+    get:
+      tags:
+        - Events
+      summary: List Teams
+      description: |
+        Get a list of sports teams.
+
+        **Public endpoint - no authentication required**
+
+        **Base URL: https://gamma-api.polymarket.com**
+      operationId: listTeams
+      servers:
+        - url: https://gamma-api.polymarket.com
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          schema:
+            type: integer
+        - name: sport
+          in: query
+          schema:
+            type: string
+        - name: league
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of teams
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Team'
+
+  # ============================================
+  # GAMMA API - COMMENTS ENDPOINTS
+  # ============================================
+  /comments:
+    get:
+      tags:
+        - Events
+      summary: List Comments
+      description: |
+        Get comments for a market or event.
+
+        **Public endpoint - no authentication required**
+
+        **Base URL: https://gamma-api.polymarket.com**
+      operationId: listComments
+      servers:
+        - url: https://gamma-api.polymarket.com
+      parameters:
+        - name: market
+          in: query
+          description: Market condition ID
+          schema:
+            type: string
+        - name: event
+          in: query
+          description: Event ID
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of comments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Comment'
+
+# ============================================
+# COMPONENTS
+# ============================================
+components:
+  parameters:
+    PolyAddress:
+      name: POLY_ADDRESS
+      in: header
+      required: true
+      description: Polygon signer address (0x-prefixed)
+      schema:
+        type: string
+        example: "0x742d35Cc6634C0532925a3b844Bc9e7595f55555"
+
+    PolySignatureL1:
+      name: POLY_SIGNATURE
+      in: header
+      required: true
+      description: EIP-712 signature for L1 authentication
+      schema:
+        type: string
+
+    PolySignatureL2:
+      name: POLY_SIGNATURE
+      in: header
+      required: true
+      description: HMAC-SHA256 signature for L2 authentication
+      schema:
+        type: string
+
+    PolyTimestamp:
+      name: POLY_TIMESTAMP
+      in: header
+      required: true
+      description: Current UNIX timestamp in seconds
+      schema:
+        type: string
+
+    PolyNonce:
+      name: POLY_NONCE
+      in: header
+      required: true
+      description: Nonce value (default 0)
+      schema:
+        type: string
+        default: "0"
+
+    PolyApiKey:
+      name: POLY_API_KEY
+      in: header
+      required: true
+      description: API key from L1 authentication
+      schema:
+        type: string
+
+    PolyPassphrase:
+      name: POLY_PASSPHRASE
+      in: header
+      required: true
+      description: Passphrase from L1 authentication
+      schema:
+        type: string
+
+  schemas:
+    ApiCredentials:
+      type: object
+      description: API credentials returned from L1 authentication
+      properties:
+        apiKey:
+          type: string
+          description: UUID format API key
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        secret:
+          type: string
+          description: Base64-encoded secret for HMAC signing
+        passphrase:
+          type: string
+          description: Random passphrase string
+
+    SignedOrder:
+      type: object
+      description: A signed order ready for submission
+      required:
+        - salt
+        - maker
+        - signer
+        - taker
+        - tokenId
+        - makerAmount
+        - takerAmount
+        - expiration
+        - nonce
+        - feeRateBps
+        - side
+        - signatureType
+        - signature
+      properties:
+        salt:
+          type: string
+          description: Random salt for order uniqueness
+        maker:
+          type: string
+          description: Maker/funder address
+        signer:
+          type: string
+          description: Signing address
+        taker:
+          type: string
+          description: Taker address (operator)
+        tokenId:
+          type: string
+          description: ERC1155 token ID
+        makerAmount:
+          type: string
+          description: Maximum amount maker will spend (in wei)
+        takerAmount:
+          type: string
+          description: Minimum amount taker pays maker (in wei)
+        expiration:
+          type: string
+          description: Unix expiration timestamp (0 for no expiration)
+        nonce:
+          type: string
+          description: Maker's exchange nonce
+        feeRateBps:
+          type: string
+          description: Fee rate in basis points
+        side:
+          type: string
+          enum: [BUY, SELL]
+          description: Order side
+        signatureType:
+          type: integer
+          enum: [0, 1, 2]
+          description: "0=EOA, 1=POLY_PROXY, 2=GNOSIS_SAFE"
+        signature:
+          type: string
+          description: Hex-encoded EIP-712 signature
+
+    OrderRequest:
+      type: object
+      description: Order placement request
+      required:
+        - order
+        - owner
+        - orderType
+      properties:
+        order:
+          $ref: '#/components/schemas/SignedOrder'
+        owner:
+          type: string
+          description: API key of order owner
+        orderType:
+          type: string
+          enum: [FOK, FAK, GTC, GTD]
+          description: |
+            Order type:
+            - FOK: Fill-Or-Kill
+            - FAK: Fill-And-Kill
+            - GTC: Good-Til-Cancelled
+            - GTD: Good-Til-Date
+        postOnly:
+          type: boolean
+          default: false
+          description: If true, order only rests on book
+
+    OrderResponse:
+      type: object
+      description: Response from order placement
+      properties:
+        success:
+          type: boolean
+          description: Whether the order was accepted
+        errorMsg:
+          type: string
+          description: Error message if unsuccessful
+        orderId:
+          type: string
+          description: Unique order identifier
+        orderHashes:
+          type: array
+          items:
+            type: string
+          description: Transaction hashes if matched
+        status:
+          type: string
+          enum: [matched, live, delayed, unmatched]
+          description: Order status after placement
+
+    OpenOrder:
+      type: object
+      description: An open order on the book
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+        market:
+          type: string
+          description: Market condition ID
+        original_size:
+          type: string
+        size_matched:
+          type: string
+        price:
+          type: string
+        side:
+          type: string
+          enum: [BUY, SELL]
+        outcome:
+          type: string
+        maker_address:
+          type: string
+        owner:
+          type: string
+          description: API key
+        asset_id:
+          type: string
+          description: Token ID
+        expiration:
+          type: string
+        type:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    CancelResponse:
+      type: object
+      properties:
+        canceled:
+          type: array
+          items:
+            type: string
+          description: List of cancelled order IDs
+        not_canceled:
+          type: array
+          items:
+            type: string
+          description: List of orders that could not be cancelled
+
+    Trade:
+      type: object
+      description: A completed trade
+      properties:
+        id:
+          type: string
+        taker_order_id:
+          type: string
+        market:
+          type: string
+        asset_id:
+          type: string
+        side:
+          type: string
+          enum: [BUY, SELL]
+        size:
+          type: string
+        fee_rate_bps:
+          type: string
+        price:
+          type: string
+        status:
+          type: string
+        match_time:
+          type: string
+          format: date-time
+        outcome:
+          type: string
+        maker_address:
+          type: string
+        owner:
+          type: string
+        transaction_hash:
+          type: string
+        type:
+          type: string
+          enum: [TAKER, MAKER]
+
+    OrderBookSummary:
+      type: object
+      description: Order book summary for a token
+      properties:
+        market:
+          type: string
+          description: Market condition ID
+        asset_id:
+          type: string
+          description: Token ID
+        timestamp:
+          type: string
+          format: date-time
+        hash:
+          type: string
+        bids:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderLevel'
+        asks:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderLevel'
+        min_order_size:
+          type: string
+        tick_size:
+          type: string
+        neg_risk:
+          type: boolean
+
+    OrderLevel:
+      type: object
+      description: A price level in the order book
+      properties:
+        price:
+          type: string
+        size:
+          type: string
+
+    SpreadInfo:
+      type: object
+      description: Bid-ask spread information
+      properties:
+        asset_id:
+          type: string
+        bid:
+          type: string
+        ask:
+          type: string
+        spread:
+          type: string
+
+    Market:
+      type: object
+      description: A prediction market
+      properties:
+        id:
+          type: string
+        question:
+          type: string
+        conditionId:
+          type: string
+        slug:
+          type: string
+        resolutionSource:
+          type: string
+        endDate:
+          type: string
+          format: date-time
+        liquidity:
+          type: string
+        volume:
+          type: string
+        volume24hr:
+          type: string
+        active:
+          type: boolean
+        closed:
+          type: boolean
+        marketMakerAddress:
+          type: string
+        outcomes:
+          type: array
+          items:
+            type: string
+        outcomePrices:
+          type: array
+          items:
+            type: string
+        tokens:
+          type: array
+          items:
+            $ref: '#/components/schemas/MarketToken'
+        description:
+          type: string
+        category:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+
+    MarketToken:
+      type: object
+      description: Token information for a market outcome
+      properties:
+        token_id:
+          type: string
+        outcome:
+          type: string
+        price:
+          type: string
+        winner:
+          type: boolean
+
+    Event:
+      type: object
+      description: An event containing multiple markets
+      properties:
+        id:
+          type: string
+        slug:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        active:
+          type: boolean
+        closed:
+          type: boolean
+        liquidity:
+          type: string
+        volume:
+          type: string
+        markets:
+          type: array
+          items:
+            $ref: '#/components/schemas/Market'
+        tags:
+          type: array
+          items:
+            type: string
+
+    Position:
+      type: object
+      description: User's position in a market
+      properties:
+        proxyWallet:
+          type: string
+        asset:
+          type: string
+        conditionId:
+          type: string
+        size:
+          type: number
+        avgPrice:
+          type: number
+        currentValue:
+          type: number
+        cashPnl:
+          type: number
+        percentPnl:
+          type: number
+        title:
+          type: string
+        outcome:
+          type: string
+        redeemable:
+          type: boolean
+        mergeable:
+          type: boolean
+
+    # ============================================
+    # WEBSOCKET SCHEMAS
+    # ============================================
+
+    WsSubscription:
+      type: object
+      description: WebSocket subscription message
+      properties:
+        auth:
+          $ref: '#/components/schemas/WsAuth'
+        type:
+          type: string
+          enum: [MARKET, USER]
+          description: Channel type to subscribe
+        assets_ids:
+          type: array
+          items:
+            type: string
+          description: Token IDs to subscribe (for market channel)
+        markets:
+          type: array
+          items:
+            type: string
+          description: Condition IDs to subscribe (for user channel)
+        custom_feature_enabled:
+          type: boolean
+          description: Enable additional event types
+      example:
+        auth:
+          apiKey: "550e8400-e29b-41d4-a716-446655440000"
+          secret: "base64Secret"
+          passphrase: "passphrase"
+        type: "MARKET"
+        assets_ids: ["71321045679252212594626385532706912750332728571942532289631379312455583992563"]
+        custom_feature_enabled: true
+
+    WsAuth:
+      type: object
+      description: WebSocket authentication (required for user channel only)
+      properties:
+        apiKey:
+          type: string
+          description: API key from L1 authentication
+        secret:
+          type: string
+          description: API secret
+        passphrase:
+          type: string
+          description: API passphrase
+
+    WsBookMessage:
+      type: object
+      description: Full orderbook snapshot (market channel)
+      properties:
+        event_type:
+          type: string
+          enum: [book]
+        asset_id:
+          type: string
+          description: Token ID
+        market:
+          type: string
+          description: Condition ID
+        timestamp:
+          type: string
+          description: Unix timestamp in milliseconds
+        hash:
+          type: string
+          description: Orderbook content hash
+        bids:
+          type: array
+          items:
+            $ref: '#/components/schemas/WsOrderLevel'
+        asks:
+          type: array
+          items:
+            $ref: '#/components/schemas/WsOrderLevel'
+      example:
+        event_type: "book"
+        asset_id: "71321045679252212594626385532706912750332728571942532289631379312455583992563"
+        market: "0xbd31dc8a20211944f6b70f31557f1001557b59905b7738480ca09bd4532f84af"
+        bids: [{"price": "0.48", "size": "30"}, {"price": "0.49", "size": "20"}]
+        asks: [{"price": "0.52", "size": "25"}, {"price": "0.53", "size": "60"}]
+        timestamp: "1672290701000"
+        hash: "0x..."
+
+    WsOrderLevel:
+      type: object
+      properties:
+        price:
+          type: string
+        size:
+          type: string
+
+    WsPriceChangeMessage:
+      type: object
+      description: Price level update (market channel)
+      properties:
+        event_type:
+          type: string
+          enum: [price_change]
+        market:
+          type: string
+          description: Condition ID
+        timestamp:
+          type: string
+          description: Unix timestamp in milliseconds
+        price_changes:
+          type: array
+          items:
+            $ref: '#/components/schemas/WsPriceChange'
+
+    WsPriceChange:
+      type: object
+      properties:
+        asset_id:
+          type: string
+        price:
+          type: string
+        size:
+          type: string
+          description: New aggregate size at price level
+        side:
+          type: string
+          enum: [BUY, SELL]
+        hash:
+          type: string
+        best_bid:
+          type: string
+        best_ask:
+          type: string
+
+    WsLastTradePriceMessage:
+      type: object
+      description: Trade execution price (market channel)
+      properties:
+        event_type:
+          type: string
+          enum: [last_trade_price]
+        asset_id:
+          type: string
+        market:
+          type: string
+        price:
+          type: string
+        size:
+          type: string
+        side:
+          type: string
+          enum: [BUY, SELL]
+        fee_rate_bps:
+          type: string
+        timestamp:
+          type: string
+
+    WsTradeMessage:
+      type: object
+      description: Trade event (user channel)
+      properties:
+        event_type:
+          type: string
+          enum: [trade]
+        id:
+          type: string
+          description: Trade ID
+        taker_order_id:
+          type: string
+        market:
+          type: string
+          description: Condition ID
+        asset_id:
+          type: string
+        side:
+          type: string
+          enum: [BUY, SELL]
+        price:
+          type: string
+        size:
+          type: string
+        status:
+          type: string
+          enum: [MATCHED, MINED, CONFIRMED, RETRYING, FAILED]
+        matchtime:
+          type: string
+        timestamp:
+          type: string
+        owner:
+          type: string
+          description: API key of trade owner
+        maker_orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/WsMakerOrder'
+      example:
+        event_type: "trade"
+        id: "28c4d2eb-bbea-40e7-a9f0-b2fdb56b2c2e"
+        market: "0xbd31dc8a20211944f6b70f31557f1001557b59905b7738480ca09bd4532f84af"
+        asset_id: "52114319501245915516055106046884209969926127482827954674443846427813813222426"
+        side: "BUY"
+        price: "0.57"
+        size: "10"
+        status: "MATCHED"
+        matchtime: "1672290701"
+        timestamp: "1672290701"
+
+    WsMakerOrder:
+      type: object
+      properties:
+        order_id:
+          type: string
+        asset_id:
+          type: string
+        price:
+          type: string
+        matched_amount:
+          type: string
+        outcome:
+          type: string
+        owner:
+          type: string
+
+    WsOrderMessage:
+      type: object
+      description: Order event (user channel)
+      properties:
+        event_type:
+          type: string
+          enum: [order]
+        type:
+          type: string
+          enum: [PLACEMENT, UPDATE, CANCELLATION]
+          description: Event type
+        id:
+          type: string
+          description: Order ID
+        market:
+          type: string
+          description: Condition ID
+        asset_id:
+          type: string
+        side:
+          type: string
+          enum: [BUY, SELL]
+        price:
+          type: string
+        original_size:
+          type: string
+        size_matched:
+          type: string
+        outcome:
+          type: string
+        owner:
+          type: string
+          description: API key
+        timestamp:
+          type: string
+        associate_trades:
+          type: array
+          items:
+            type: string
+          description: IDs of trades this order participated in
+      example:
+        event_type: "order"
+        type: "PLACEMENT"
+        id: "0xff354cd7ca7539dfa9c28d90943ab5779a4eac34b9b37a757d7b32bdfb11790b"
+        market: "0xbd31dc8a20211944f6b70f31557f1001557b59905b7738480ca09bd4532f84af"
+        asset_id: "52114319501245915516055106046884209969926127482827954674443846427813813222426"
+        side: "SELL"
+        price: "0.57"
+        original_size: "10"
+        size_matched: "0"
+        outcome: "YES"
+        timestamp: "1672290687"
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+        code:
+          type: string
+          description: Error code
+
+    # ============================================
+    # DATA API SCHEMAS
+    # ============================================
+
+    ClosedPosition:
+      type: object
+      description: A closed position
+      properties:
+        proxyWallet:
+          type: string
+        asset:
+          type: string
+        conditionId:
+          type: string
+        avgPrice:
+          type: number
+        totalBought:
+          type: number
+        realizedPnl:
+          type: number
+        curPrice:
+          type: number
+        timestamp:
+          type: integer
+        title:
+          type: string
+        slug:
+          type: string
+        icon:
+          type: string
+        eventSlug:
+          type: string
+        outcome:
+          type: string
+        outcomeIndex:
+          type: integer
+        oppositeOutcome:
+          type: string
+        oppositeAsset:
+          type: string
+        endDate:
+          type: string
+
+    Activity:
+      type: object
+      description: User activity item
+      properties:
+        proxyWallet:
+          type: string
+        timestamp:
+          type: integer
+        conditionId:
+          type: string
+        type:
+          type: string
+          enum: [TRADE, SPLIT, MERGE, REDEEM, REWARD, CONVERSION, MAKER_REBATE]
+        size:
+          type: number
+        usdcSize:
+          type: number
+        transactionHash:
+          type: string
+        price:
+          type: number
+        asset:
+          type: string
+        side:
+          type: string
+          enum: [BUY, SELL]
+        outcomeIndex:
+          type: integer
+        title:
+          type: string
+        slug:
+          type: string
+        icon:
+          type: string
+        eventSlug:
+          type: string
+        outcome:
+          type: string
+        name:
+          type: string
+        pseudonym:
+          type: string
+        bio:
+          type: string
+        profileImage:
+          type: string
+
+    LeaderboardEntry:
+      type: object
+      description: Trader leaderboard entry
+      properties:
+        rank:
+          type: string
+        user:
+          type: string
+        volume:
+          type: number
+        pnl:
+          type: number
+        profit:
+          type: number
+        marketsTraded:
+          type: integer
+        name:
+          type: string
+        pseudonym:
+          type: string
+        profileImage:
+          type: string
+
+    BuilderLeaderboardEntry:
+      type: object
+      description: Builder leaderboard entry
+      properties:
+        rank:
+          type: string
+        builder:
+          type: string
+        volume:
+          type: number
+        activeUsers:
+          type: integer
+        verified:
+          type: boolean
+        builderLogo:
+          type: string
+
+    LiveVolume:
+      type: object
+      description: Live volume for an event
+      properties:
+        total:
+          type: number
+        markets:
+          type: array
+          items:
+            type: object
+            properties:
+              market:
+                type: string
+              value:
+                type: number
+
+    OpenInterestItem:
+      type: object
+      description: Open interest for a market
+      properties:
+        market:
+          type: string
+        value:
+          type: number
+
+    Holder:
+      type: object
+      description: Token holder
+      properties:
+        user:
+          type: string
+        size:
+          type: number
+        avgPrice:
+          type: number
+        name:
+          type: string
+        pseudonym:
+          type: string
+        profileImage:
+          type: string
+
+    BalanceAllowance:
+      type: object
+      description: Balance and allowance response
+      properties:
+        balance:
+          type: string
+        allowance:
+          type: string
+
+    PriceHistoryResponse:
+      type: object
+      description: Price history response
+      properties:
+        history:
+          type: array
+          items:
+            type: object
+            properties:
+              t:
+                type: number
+                description: UTC timestamp
+              p:
+                type: number
+                description: Price
+
+    # ============================================
+    # BRIDGE API SCHEMAS
+    # ============================================
+
+    SupportedAssetsResponse:
+      type: object
+      description: Supported assets for bridging
+      properties:
+        supportedAssets:
+          type: array
+          items:
+            $ref: '#/components/schemas/SupportedAsset'
+
+    SupportedAsset:
+      type: object
+      description: Supported asset for deposit/withdrawal
+      properties:
+        chainId:
+          type: string
+        chainName:
+          type: string
+        token:
+          type: object
+          properties:
+            name:
+              type: string
+            symbol:
+              type: string
+            address:
+              type: string
+            decimals:
+              type: integer
+        minCheckoutUsd:
+          type: number
+
+    DepositResponse:
+      type: object
+      description: Deposit/withdrawal addresses
+      properties:
+        address:
+          type: object
+          properties:
+            evm:
+              type: string
+              description: EVM-compatible deposit address
+            svm:
+              type: string
+              description: Solana deposit address
+            btc:
+              type: string
+              description: Bitcoin deposit address
+        note:
+          type: string
+
+    QuoteRequest:
+      type: object
+      description: Bridge quote request
+      required:
+        - fromAmountBaseUnit
+        - fromChainId
+        - fromTokenAddress
+        - recipientAddress
+        - toChainId
+        - toTokenAddress
+      properties:
+        fromAmountBaseUnit:
+          type: string
+        fromChainId:
+          type: string
+        fromTokenAddress:
+          type: string
+        recipientAddress:
+          type: string
+        toChainId:
+          type: string
+        toTokenAddress:
+          type: string
+
+    QuoteResponse:
+      type: object
+      description: Bridge quote response
+      properties:
+        estCheckoutTimeMs:
+          type: integer
+        estFeeBreakdown:
+          type: object
+          properties:
+            appFeeLabel:
+              type: string
+            appFeePercent:
+              type: number
+            appFeeUsd:
+              type: number
+            fillCostPercent:
+              type: number
+            fillCostUsd:
+              type: number
+            gasUsd:
+              type: number
+            maxSlippage:
+              type: number
+            minReceived:
+              type: number
+            swapImpact:
+              type: number
+            swapImpactUsd:
+              type: number
+            totalImpact:
+              type: number
+            totalImpactUsd:
+              type: number
+        estInputUsd:
+          type: number
+        estOutputUsd:
+          type: number
+        estToTokenBaseUnit:
+          type: string
+        quoteId:
+          type: string
+
+    TransactionStatusResponse:
+      type: object
+      description: Transaction status response
+      properties:
+        transactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/BridgeTransaction'
+
+    BridgeTransaction:
+      type: object
+      description: Bridge transaction
+      properties:
+        fromChainId:
+          type: string
+        fromTokenAddress:
+          type: string
+        fromAmountBaseUnit:
+          type: string
+        toChainId:
+          type: string
+        toTokenAddress:
+          type: string
+        status:
+          type: string
+          enum: [DEPOSIT_DETECTED, PROCESSING, ORIGIN_TX_CONFIRMED, SUBMITTED, COMPLETED, FAILED]
+        txHash:
+          type: string
+        createdTimeMs:
+          type: number
+
+    # ============================================
+    # GAMMA API SCHEMAS
+    # ============================================
+
+    Series:
+      type: object
+      description: A series containing multiple events
+      properties:
+        id:
+          type: string
+        ticker:
+          type: string
+        slug:
+          type: string
+        title:
+          type: string
+        subtitle:
+          type: string
+        seriesType:
+          type: string
+        recurrence:
+          type: string
+        description:
+          type: string
+        image:
+          type: string
+        icon:
+          type: string
+        layout:
+          type: string
+        active:
+          type: boolean
+        closed:
+          type: boolean
+        archived:
+          type: boolean
+        featured:
+          type: boolean
+        volume:
+          type: number
+        volume24hr:
+          type: number
+        liquidity:
+          type: number
+        startDate:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/Event'
+        tags:
+          type: array
+          items:
+            type: string
+
+    Tag:
+      type: object
+      description: A market tag
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        slug:
+          type: string
+        forceShow:
+          type: boolean
+        forceHide:
+          type: boolean
+        isCarousel:
+          type: boolean
+        publishedAt:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    SearchResults:
+      type: object
+      description: Search results
+      properties:
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/Event'
+        tags:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              label:
+                type: string
+              slug:
+                type: string
+              event_count:
+                type: integer
+        profiles:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublicProfile'
+        pagination:
+          type: object
+          properties:
+            hasMore:
+              type: boolean
+            totalResults:
+              type: integer
+
+    PublicProfile:
+      type: object
+      description: Public user profile
+      properties:
+        createdAt:
+          type: string
+          format: date-time
+        proxyWallet:
+          type: string
+        profileImage:
+          type: string
+        displayUsernamePublic:
+          type: boolean
+        bio:
+          type: string
+        pseudonym:
+          type: string
+        name:
+          type: string
+        xUsername:
+          type: string
+        verifiedBadge:
+          type: boolean
+        users:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              creator:
+                type: boolean
+              mod:
+                type: boolean
+
+    Team:
+      type: object
+      description: Sports team
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        shortName:
+          type: string
+        logo:
+          type: string
+        sport:
+          type: string
+        league:
+          type: string
+
+    Comment:
+      type: object
+      description: User comment
+      properties:
+        id:
+          type: string
+        text:
+          type: string
+        user:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        likes:
+          type: integer
+        replies:
+          type: integer
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Unauthorized:
+      description: Unauthorized - invalid or missing authentication
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  securitySchemes:
+    L1Auth:
+      type: apiKey
+      in: header
+      name: POLY_SIGNATURE
+      description: |
+        EIP-712 signature for L1 authentication.
+        Required headers: POLY_ADDRESS, POLY_SIGNATURE, POLY_TIMESTAMP, POLY_NONCE
+
+    L2Auth:
+      type: apiKey
+      in: header
+      name: POLY_API_KEY
+      description: |
+        HMAC-SHA256 authentication for L2 endpoints.
+        Required headers: POLY_ADDRESS, POLY_SIGNATURE, POLY_TIMESTAMP, POLY_API_KEY, POLY_PASSPHRASE

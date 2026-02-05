@@ -1,0 +1,336 @@
+name: Deploy API Documentation & Learn UI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  # Validation job - runs on all events
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate OpenAPI specification
+        run: npm run validate
+        continue-on-error: false
+
+  # Build job - runs after validation
+  build:
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Build static site
+        run: |
+          mkdir -p dist
+
+          # Copy OpenAPI specification
+          cp -r openapi dist/
+
+          # Copy Swagger UI
+          cp -r swagger dist/
+
+          # Copy ReDoc
+          cp -r redoc dist/
+
+          # Copy assets
+          cp -r assets dist/
+
+          echo "Base site structure created"
+          ls -la dist/
+
+      - name: Build Polymarket Learn UI
+        run: |
+          cd polymarket-learn-ui
+          pnpm install
+          pnpm run build
+          
+          # Copy Learn UI build output to dist/learn
+          mkdir -p ../dist/learn
+          cp -r dist/* ../dist/learn/
+          
+          echo "Learn UI built successfully"
+          ls -la ../dist/learn/
+
+      - name: Create landing page
+        run: |
+          cat > dist/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Polymarket API Documentation</title>
+            <meta name="description" content="Comprehensive Polymarket API Documentation — Interactive Swagger UI, ReDoc, OpenAPI 3.0 Spec & Learn Hub">
+            <link rel="icon" type="image/svg+xml" href="assets/polymarket-logo.svg">
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+            <style>
+              * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+              }
+              body {
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                min-height: 100vh;
+                background: linear-gradient(135deg, #0f0f23 0%, #1a1a3e 50%, #0f0f23 100%);
+                color: #e4e4e7;
+                overflow-x: hidden;
+              }
+              .container {
+                max-width: 1200px;
+                margin: 0 auto;
+                padding: 60px 24px;
+              }
+              .hero {
+                text-align: center;
+                padding: 80px 0 60px;
+              }
+              .logo {
+                width: 80px;
+                height: 80px;
+                margin-bottom: 24px;
+                filter: drop-shadow(0 0 20px rgba(147, 51, 234, 0.3));
+                animation: pulse 3s ease-in-out infinite;
+              }
+              @keyframes pulse {
+                0%, 100% { transform: scale(1); filter: drop-shadow(0 0 20px rgba(147, 51, 234, 0.3)); }
+                50% { transform: scale(1.05); filter: drop-shadow(0 0 30px rgba(147, 51, 234, 0.5)); }
+              }
+              h1 {
+                font-size: 3rem;
+                font-weight: 700;
+                background: linear-gradient(135deg, #fff 0%, #a855f7 50%, #6366f1 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+                margin-bottom: 16px;
+              }
+              .subtitle {
+                font-size: 1.25rem;
+                color: #a1a1aa;
+                max-width: 600px;
+                margin: 0 auto 48px;
+                line-height: 1.6;
+              }
+              .cards-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                gap: 24px;
+                margin-top: 40px;
+              }
+              .card {
+                background: linear-gradient(135deg, rgba(30, 30, 60, 0.8) 0%, rgba(20, 20, 40, 0.9) 100%);
+                border: 1px solid rgba(147, 51, 234, 0.2);
+                border-radius: 16px;
+                padding: 32px;
+                text-decoration: none;
+                color: inherit;
+                transition: all 0.3s ease;
+                position: relative;
+                overflow: hidden;
+              }
+              .card::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 3px;
+                background: linear-gradient(90deg, #a855f7, #6366f1);
+                transform: scaleX(0);
+                transition: transform 0.3s ease;
+              }
+              .card:hover {
+                transform: translateY(-4px);
+                border-color: rgba(147, 51, 234, 0.5);
+                box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3), 0 0 40px rgba(147, 51, 234, 0.1);
+              }
+              .card:hover::before {
+                transform: scaleX(1);
+              }
+              .card-icon {
+                font-size: 2.5rem;
+                margin-bottom: 16px;
+              }
+              .card h2 {
+                font-size: 1.5rem;
+                font-weight: 600;
+                margin-bottom: 12px;
+                color: #fff;
+              }
+              .card p {
+                color: #a1a1aa;
+                line-height: 1.6;
+              }
+              .badge {
+                display: inline-block;
+                padding: 4px 12px;
+                border-radius: 9999px;
+                font-size: 0.75rem;
+                font-weight: 500;
+                text-transform: uppercase;
+                margin-top: 16px;
+              }
+              .badge-blue {
+                background: rgba(59, 130, 246, 0.2);
+                color: #60a5fa;
+                border: 1px solid rgba(59, 130, 246, 0.3);
+              }
+              .badge-purple {
+                background: rgba(147, 51, 234, 0.2);
+                color: #c084fc;
+                border: 1px solid rgba(147, 51, 234, 0.3);
+              }
+              .badge-green {
+                background: rgba(34, 197, 94, 0.2);
+                color: #4ade80;
+                border: 1px solid rgba(34, 197, 94, 0.3);
+              }
+              .footer {
+                text-align: center;
+                padding: 40px 0;
+                color: #71717a;
+                font-size: 0.875rem;
+                border-top: 1px solid rgba(255, 255, 255, 0.05);
+                margin-top: 60px;
+              }
+              .footer a {
+                color: #a855f7;
+                text-decoration: none;
+              }
+              .footer a:hover {
+                text-decoration: underline;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="hero">
+                <img src="assets/polymarket-logo.svg" alt="Polymarket" class="logo">
+                <h1>Polymarket API</h1>
+                <p class="subtitle">
+                  Complete documentation for building prediction market integrations with Polymarket's trading APIs
+                </p>
+              </div>
+              
+              <div class="cards-grid">
+                <a href="swagger/index.html" class="card">
+                  <div class="card-icon">⚡</div>
+                  <h2>Swagger UI</h2>
+                  <p>Interactive API explorer with live request testing, MetaMask wallet integration, and real-time authentication.</p>
+                  <span class="badge badge-blue">Interactive</span>
+                </a>
+                
+                <a href="redoc/index.html" class="card">
+                  <div class="card-icon">📖</div>
+                  <h2>ReDoc</h2>
+                  <p>Clean, three-panel API reference documentation optimized for reading and understanding the complete API.</p>
+                  <span class="badge badge-purple">Reference</span>
+                </a>
+                
+                <a href="learn/index.html" class="card">
+                  <div class="card-icon">🎓</div>
+                  <h2>Learn Hub</h2>
+                  <p>Comprehensive tutorials, guides, and examples for getting started with Polymarket prediction markets.</p>
+                  <span class="badge badge-green">Tutorials</span>
+                </a>
+                
+                <a href="openapi/polymarket-api.yaml" class="card" download>
+                  <div class="card-icon">📄</div>
+                  <h2>OpenAPI Spec</h2>
+                  <p>Download the complete OpenAPI 3.0 specification for code generation and custom integrations.</p>
+                  <span class="badge badge-blue">Download</span>
+                </a>
+              </div>
+            </div>
+            
+            <footer class="footer">
+              <p>Built with ❤️ for the prediction markets community</p>
+              <p style="margin-top: 8px;">
+                <a href="https://github.com/bowen31337/polymarket-api-docs">View on GitHub</a>
+              </p>
+            </footer>
+          </body>
+          </html>
+          EOF
+          
+          echo "Landing page created"
+
+      - name: Verify final structure
+        run: |
+          echo "Final dist structure:"
+          find dist -type f | head -50
+          
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  # Deploy job - only runs on main branch
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Output deployment URL
+        run: |
+          echo "🚀 Deployed to: ${{ steps.deployment.outputs.page_url }}"
+          echo ""
+          echo "📍 Available Pages:"
+          echo "   Landing:    ${{ steps.deployment.outputs.page_url }}"
+          echo "   Swagger UI: ${{ steps.deployment.outputs.page_url }}swagger/"
+          echo "   ReDoc:      ${{ steps.deployment.outputs.page_url }}redoc/"
+          echo "   Learn Hub:  ${{ steps.deployment.outputs.page_url }}learn/"
+          echo "   OpenAPI:    ${{ steps.deployment.outputs.page_url }}openapi/polymarket-api.yaml"

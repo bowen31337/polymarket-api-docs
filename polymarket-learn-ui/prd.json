@@ -1,0 +1,173 @@
+{
+  "project": "Polymarket Learn UI",
+  "branchName": "ralph/polish-optimization",
+  "description": "Complete remaining polish, optimization, and accessibility improvements for Polymarket Learn educational platform",
+  "complexity": {
+    "score": 10,
+    "category": "medium",
+    "estimated_iterations": 15
+  },
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Add code splitting with lazy loading for routes",
+      "description": "As a user, I want the app to load faster so that I can start learning immediately. Currently the bundle is 846KB, which exceeds the 300KB target. Implement React.lazy and Suspense for route-based code splitting.",
+      "acceptanceCriteria": [
+        "Landing page components are lazily loaded",
+        "Learn layout and views are lazily loaded",
+        "Main bundle size is reduced significantly",
+        "Loading states are shown during lazy loading",
+        "Build completes without errors",
+        "TypeCheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Implemented. Main bundle reduced from 846KB to 234KB. Code split into 23 chunks."
+    },
+    {
+      "id": "US-002",
+      "title": "Add GSAP ScrollTrigger animations to lesson content",
+      "description": "As a user, I want content to animate in as I scroll through lessons for a more engaging experience. Add scroll-triggered reveal animations to headings, paragraphs, and code blocks in LessonView.",
+      "acceptanceCriteria": [
+        "Headings animate in with subtle fade/slide as they enter viewport",
+        "Paragraphs and list items have staggered reveal animations",
+        "Animations are performant and don't cause layout shift",
+        "Animations respect prefers-reduced-motion",
+        "Build completes without errors",
+        "TypeCheck passes"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "Implemented GSAP ScrollTrigger for headings, paragraphs, lists, code blocks, and callouts. Respects prefers-reduced-motion."
+    },
+    {
+      "id": "US-003",
+      "title": "Add smooth page transitions between lessons",
+      "description": "As a user, I want smooth transitions when navigating between lessons so the experience feels polished. Use Framer Motion AnimatePresence for page transitions.",
+      "acceptanceCriteria": [
+        "Content fades/slides out when leaving a lesson",
+        "Content fades/slides in when entering a lesson",
+        "Transitions are quick (under 300ms) and not jarring",
+        "Scroll position resets appropriately",
+        "Build completes without errors",
+        "TypeCheck passes"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "Implemented page transitions using Framer Motion. AnimatePresence wraps Outlet in Layout. Transitions respect prefers-reduced-motion."
+    },
+    {
+      "id": "US-004",
+      "title": "Add skip to content link for accessibility",
+      "description": "As a keyboard user, I want a skip link so I can bypass the navigation and go directly to main content. This is a WCAG 2.1 AA requirement.",
+      "acceptanceCriteria": [
+        "Skip link appears on focus at the top of the page",
+        "Clicking skip link moves focus to main content",
+        "Skip link is visually hidden until focused",
+        "Works in both Layout and Landing views",
+        "Build completes without errors",
+        "TypeCheck passes"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "Created SkipLink component. Added to both Layout and Landing. Skip link is sr-only until focused, then appears at top-left."
+    },
+    {
+      "id": "US-005",
+      "title": "Add focus trap to search modal",
+      "description": "As a keyboard user, I want focus to be trapped inside the search modal when it's open so I don't accidentally tab out of it. This improves accessibility.",
+      "acceptanceCriteria": [
+        "When search modal opens, focus moves to search input",
+        "Tab cycles through focusable elements within modal only",
+        "Shift+Tab cycles backwards through modal elements",
+        "Escape closes the modal and returns focus to trigger",
+        "Build completes without errors",
+        "TypeCheck passes"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": "Implemented focus trap with Tab/Shift+Tab cycling. Focus returns to trigger on close. Added role=dialog and aria-modal for screen readers."
+    },
+    {
+      "id": "US-006",
+      "title": "Add keyboard navigation to FAQ accordion",
+      "description": "As a keyboard user, I want to navigate the FAQ accordion using arrow keys so I can efficiently browse questions. Following ARIA accordion pattern.",
+      "acceptanceCriteria": [
+        "Arrow Up/Down moves focus between FAQ items",
+        "Enter or Space toggles the focused FAQ item",
+        "Home moves focus to first FAQ item",
+        "End moves focus to last FAQ item",
+        "Proper ARIA attributes are in place",
+        "Build completes without errors",
+        "TypeCheck passes"
+      ],
+      "priority": 6,
+      "passes": true,
+      "notes": "Implemented full ARIA accordion pattern. Arrow keys, Home/End navigate. Enter/Space toggle. Added aria-expanded, aria-controls, and proper heading structure."
+    },
+    {
+      "id": "US-007",
+      "title": "Add prefers-reduced-motion support",
+      "description": "As a user with motion sensitivity, I want animations to be disabled or reduced when I have prefers-reduced-motion enabled in my OS settings.",
+      "acceptanceCriteria": [
+        "Framer Motion animations respect prefers-reduced-motion",
+        "GSAP animations are disabled or minimized for reduced motion",
+        "Page still functions correctly with animations disabled",
+        "Transitions can use instant/minimal movement",
+        "Build completes without errors",
+        "TypeCheck passes"
+      ],
+      "priority": 7,
+      "passes": true,
+      "notes": "Added MotionConfig with reducedMotion='user' in main.tsx. LazyMotion used for bundle optimization. GSAP animations already check prefersReducedMotion()."
+    },
+    {
+      "id": "US-008",
+      "title": "Add aria-live announcements for dynamic content",
+      "description": "As a screen reader user, I want to be notified when search results update or when I mark a lesson complete so I know the action succeeded.",
+      "acceptanceCriteria": [
+        "Search results count is announced when results change",
+        "Lesson completion is announced when marked complete",
+        "Progress updates are announced appropriately",
+        "Announcements use aria-live polite, not assertive",
+        "Build completes without errors",
+        "TypeCheck passes"
+      ],
+      "priority": 8,
+      "passes": true,
+      "notes": "Created AriaLiveProvider with polite/assertive regions. Search announces results count. Lesson completion announced."
+    },
+    {
+      "id": "US-009",
+      "title": "Add loading skeleton for lesson content",
+      "description": "As a user, I want to see a content skeleton while lessons are rendering so I know content is loading. This improves perceived performance.",
+      "acceptanceCriteria": [
+        "Skeleton shows animated placeholders for title, content blocks",
+        "Skeleton matches approximate layout of actual content",
+        "Skeleton uses subtle pulse animation",
+        "Skeleton disappears when content is ready",
+        "Build completes without errors",
+        "TypeCheck passes"
+      ],
+      "priority": 9,
+      "passes": true,
+      "notes": "Created LessonSkeleton with animated placeholders matching actual layout. Used as Suspense fallback for LessonView."
+    },
+    {
+      "id": "US-010",
+      "title": "Add meta tags and document title updates",
+      "description": "As a user, I want the browser tab title to reflect the current lesson so I can identify tabs easily. Also add basic meta tags for SEO.",
+      "acceptanceCriteria": [
+        "Document title updates to show lesson title",
+        "Landing page has appropriate title",
+        "Meta description is set appropriately",
+        "Title format is consistent (e.g., 'Lesson Name | Polymarket Learn')",
+        "Build completes without errors",
+        "TypeCheck passes"
+      ],
+      "priority": 10,
+      "passes": true,
+      "notes": "Created useDocumentTitle and useMetaDescription hooks. LessonView and CategoryOverview update titles. index.html has base meta tags."
+    }
+  ]
+}

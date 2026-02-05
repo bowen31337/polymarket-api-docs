@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Polymarket API Documentation</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/polymarket-logo.svg">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    /* Custom Header */
+    .custom-header {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: white;
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    }
+
+    .custom-header img {
+      height: 32px;
+    }
+
+    .custom-header h1 {
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+
+    .header-links {
+      margin-left: auto;
+      display: flex;
+      gap: 1.5rem;
+    }
+
+    .header-links a {
+      color: #95a5a6;
+      text-decoration: none;
+      font-weight: 500;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+
+    .header-links a:hover {
+      color: white;
+    }
+
+    .header-links a.active {
+      color: #3498db;
+      background: rgba(52, 152, 219, 0.1);
+    }
+
+    /* Badge for interactive */
+    .interactive-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      padding: 0.25rem 0.625rem;
+      background: rgba(46, 204, 113, 0.15);
+      border: 1px solid rgba(46, 204, 113, 0.3);
+      border-radius: 12px;
+      font-size: 0.7rem;
+      color: #2ecc71;
+      font-weight: 600;
+    }
+
+    .interactive-badge::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      background: #2ecc71;
+      border-radius: 50%;
+    }
+
+    /* Mobile responsiveness */
+    @media (max-width: 768px) {
+      .custom-header {
+        flex-wrap: wrap;
+        padding: 0.75rem 1rem;
+      }
+
+      .custom-header h1 {
+        font-size: 1rem;
+      }
+
+      .header-links {
+        width: 100%;
+        margin-left: 0;
+        margin-top: 0.5rem;
+        justify-content: flex-start;
+        gap: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Custom Header -->
+  <div class="custom-header">
+    <img src="../assets/polymarket-logo.svg" alt="Polymarket">
+    <h1>API Documentation</h1>
+    <div class="header-links">
+      <a href="../swagger/index.html">
+        Swagger UI
+        <span class="interactive-badge">Interactive</span>
+      </a>
+      <a href="./index.html" class="active">ReDoc</a>
+      <a href="https://docs.polymarket.com" target="_blank">Official Docs</a>
+      <a href="https://github.com/Polymarket" target="_blank">GitHub</a>
+    </div>
+  </div>
+
+  <!-- ReDoc Container -->
+  <div id="redoc-container"></div>
+
+  <!-- ReDoc Script -->
+  <script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js"></script>
+  <script>
+    // Initialize ReDoc with absolute URL and cache busting
+    const specUrl = new URL('../openapi/polymarket-api.yaml?v=' + Date.now(), window.location.href).href;
+    Redoc.init(specUrl, {
+      expandResponses: '200,201',
+      hideDownloadButton: false,
+      nativeScrollbars: true,
+      pathInMiddlePanel: true,
+      theme: {
+        colors: {
+          primary: { main: '#3498db' },
+          success: { main: '#2ecc71' },
+          warning: { main: '#f39c12' },
+          error: { main: '#e74c3c' }
+        },
+        typography: {
+          fontSize: '15px',
+          fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
+          headings: { fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' },
+          code: { fontFamily: 'JetBrains Mono, Monaco, monospace' }
+        },
+        sidebar: {
+          backgroundColor: '#1a1a2e',
+          textColor: '#bdc3c7'
+        },
+        rightPanel: {
+          backgroundColor: '#263238'
+        }
+      }
+    }, document.getElementById('redoc-container'));
+  </script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+{
+  "name": "polymarket-api-docs",
+  "version": "1.0.0",
+  "description": "Polymarket API Documentation with OpenAPI 3.0, Swagger UI, and ReDoc",
+  "scripts": {
+    "validate": "npx @redocly/cli lint openapi/polymarket-api.yaml",
+    "lint": "npx @stoplight/spectral-cli lint openapi/polymarket-api.yaml",
+    "bundle": "npx @redocly/cli bundle openapi/polymarket-api.yaml -o dist/openapi/polymarket-api.yaml",
+    "preview": "npx @redocly/cli preview-docs openapi/polymarket-api.yaml",
+    "serve": "npx http-server . -p 8080 --cors",
+    "build": "npm run copy-assets",
+    "copy-assets": "node scripts/copy-assets.js"
+  },
+  "devDependencies": {
+    "@redocly/cli": "^1.6.0",
+    "@stoplight/spectral-cli": "^6.11.0",
+    "http-server": "^14.1.1"
+  },
+  "keywords": [
+    "polymarket",
+    "api",
+    "openapi",
+    "swagger",
+    "documentation"
+  ],
+  "license": "MIT"
+}
