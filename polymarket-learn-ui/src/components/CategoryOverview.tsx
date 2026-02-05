@@ -171,10 +171,9 @@ export const CategoryOverview = () => {
                             transition={{ duration: 0.4, delay: index * 0.08 }}
                         >
                             <Link
-                                to={`/learn/${lesson.category}/${lesson.slug}`}
-                                className={`block p-6 rounded-2xl bg-gradient-to-br ${gradientClass} border hover:scale-[1.02] transition-all duration-200 group ${
-                                    lessonCompleted ? 'ring-1 ring-green-500/30' : ''
-                                }`}
+                                to={`/lessons/${lesson.category}/${lesson.slug}`}
+                                className={`block p-6 rounded-2xl bg-gradient-to-br ${gradientClass} border hover:scale-[1.02] transition-all duration-200 group ${lessonCompleted ? 'ring-1 ring-green-500/30' : ''
+                                    }`}
                             >
                                 <div className="flex items-start justify-between">
                                     <div className="flex-1">
@@ -224,7 +223,7 @@ export const CategoryOverview = () => {
                 >
                     <p className="text-zinc-400 mb-4">Ready to start learning?</p>
                     <Link
-                        to={`/learn/${categoryModules[0].category}/${categoryModules[0].slug}`}
+                        to={`/lessons/${categoryModules[0].category}/${categoryModules[0].slug}`}
                         className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-full font-semibold transition-colors"
                     >
                         Start with {categoryModules[0].title}

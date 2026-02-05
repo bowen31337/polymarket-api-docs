@@ -129,15 +129,15 @@ export const Layout = () => {
                         {categories.map(category => {
                             const isExpanded = expandedCategories.has(category);
                             const categoryModules = modules.filter(m => m.category === category);
-                            const isCategoryActive = location.pathname.includes(`/learn/${category}`);
+                            const isCategoryActive = location.pathname.includes(`/lessons/${category}`);
 
                             return (
                                 <div key={category} className="mb-1">
                                     <button
                                         onClick={() => toggleCategory(category)}
                                         className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isCategoryActive
-                                                ? 'text-white bg-zinc-900'
-                                                : 'text-zinc-400 hover:text-white hover:bg-zinc-900/50'
+                                            ? 'text-white bg-zinc-900'
+                                            : 'text-zinc-400 hover:text-white hover:bg-zinc-900/50'
                                             }`}
                                     >
                                         <span className="flex items-center gap-2">
@@ -150,16 +150,16 @@ export const Layout = () => {
                                     {isExpanded && (
                                         <ul className="mt-1 ml-4 pl-4 border-l border-zinc-800 space-y-0.5">
                                             {categoryModules.map(m => {
-                                                const isActive = location.pathname === `/learn/${m.category}/${m.slug}`;
+                                                const isActive = location.pathname === `/lessons/${m.category}/${m.slug}`;
                                                 const lessonCompleted = isCompleted(`${m.category}/${m.slug}`);
                                                 return (
                                                     <li key={m.slug}>
                                                         <Link
-                                                            to={`/learn/${m.category}/${m.slug}`}
+                                                            to={`/lessons/${m.category}/${m.slug}`}
                                                             onClick={() => setIsSidebarOpen(false)}
                                                             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${isActive
-                                                                    ? 'bg-blue-600/10 text-blue-400 font-medium border-l-2 border-blue-500 -ml-[1px]'
-                                                                    : 'text-zinc-500 hover:text-white hover:bg-zinc-900/50'
+                                                                ? 'bg-blue-600/10 text-blue-400 font-medium border-l-2 border-blue-500 -ml-[1px]'
+                                                                : 'text-zinc-500 hover:text-white hover:bg-zinc-900/50'
                                                                 }`}
                                                         >
                                                             {lessonCompleted ? (

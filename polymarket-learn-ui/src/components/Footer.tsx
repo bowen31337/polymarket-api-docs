@@ -42,27 +42,27 @@ export const Footer = () => {
                         <h4 className="font-semibold text-white mb-4">Learn</h4>
                         <ul className="space-y-2">
                             <li>
-                                <Link to="/learn/get-started" className="text-zinc-500 hover:text-white text-sm transition-colors">
+                                <Link to="/lessons/get-started" className="text-zinc-500 hover:text-white text-sm transition-colors">
                                     Get Started
                                 </Link>
                             </li>
                             <li>
-                                <Link to="/learn/markets" className="text-zinc-500 hover:text-white text-sm transition-colors">
+                                <Link to="/lessons/markets" className="text-zinc-500 hover:text-white text-sm transition-colors">
                                     Markets
                                 </Link>
                             </li>
                             <li>
-                                <Link to="/learn/trading" className="text-zinc-500 hover:text-white text-sm transition-colors">
+                                <Link to="/lessons/trading" className="text-zinc-500 hover:text-white text-sm transition-colors">
                                     Trading
                                 </Link>
                             </li>
                             <li>
-                                <Link to="/learn/deposits" className="text-zinc-500 hover:text-white text-sm transition-colors">
+                                <Link to="/lessons/deposits" className="text-zinc-500 hover:text-white text-sm transition-colors">
                                     Deposits
                                 </Link>
                             </li>
                             <li>
-                                <Link to="/learn/FAQ" className="text-zinc-500 hover:text-white text-sm transition-colors">
+                                <Link to="/lessons/FAQ" className="text-zinc-500 hover:text-white text-sm transition-colors">
                                     FAQ
                                 </Link>
                             </li>

@@ -43,41 +43,55 @@ const Landing = () => (
       <Navbar />
     </Suspense>
     <main id="landing-main" tabIndex={-1} className="outline-none">
-    <Suspense fallback={<div className="h-screen bg-black" />}>
-      <Hero />
-    </Suspense>
-    <Suspense fallback={<InlineLoader />}>
-      <FeatureSection />
-    </Suspense>
-    <Suspense fallback={<InlineLoader />}>
-      <HowItWorks />
-    </Suspense>
-    <Suspense fallback={<InlineLoader />}>
-      <FAQ />
-    </Suspense>
-    <Suspense fallback={<InlineLoader />}>
-      <Footer />
-    </Suspense>
+      <Suspense fallback={<div className="h-screen bg-black" />}>
+        <Hero />
+      </Suspense>
+      <Suspense fallback={<InlineLoader />}>
+        <FeatureSection />
+      </Suspense>
+      <Suspense fallback={<InlineLoader />}>
+        <HowItWorks />
+      </Suspense>
+      <Suspense fallback={<InlineLoader />}>
+        <FAQ />
+      </Suspense>
+      <Suspense fallback={<InlineLoader />}>
+        <Footer />
+      </Suspense>
     </main>
   </div>
 );
 
+// Get the base URL from Vite config (handles both local dev and GH Pages)
+// Local: BASE_URL = "/" so basename = ""
+// GH Pages: BASE_URL = "/polymarket-api-docs/learn/" so basename = "/polymarket-api-docs/learn"
+const basename = import.meta.env.BASE_URL.replace(/\/$/, '');
+
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={basename}>
       <Suspense fallback={null}>
         <WelcomeModal />
       </Suspense>
       <Routes>
+        {/* Landing page at root */}
         <Route path="/" element={<Landing />} />
 
-        <Route path="/learn" element={
+        {/* Learn section routes - these are now relative to basename */}
+        {/* On local: /learn/... On GH Pages: /polymarket-api-docs/learn/learn/... */}
+        {/* To avoid double /learn, we make lesson routes direct children of root */}
+
+        {/* Redirect old /learn path to root which shows landing */}
+        <Route path="/learn" element={<Navigate to="/" replace />} />
+
+        {/* Lesson routes with Layout wrapper */}
+        <Route path="/lessons" element={
           <Suspense fallback={<LoadingSpinner />}>
             <Layout />
           </Suspense>
         }>
           {/* Default redirect to first lesson */}
-          <Route index element={<Navigate to="/learn/get-started/what-is-polymarket" replace />} />
+          <Route index element={<Navigate to="/lessons/get-started/what-is-polymarket" replace />} />
           {/* Category overview page */}
           <Route path=":category" element={
             <Suspense fallback={<InlineLoader />}>
@@ -91,6 +105,9 @@ function App() {
             </Suspense>
           } />
         </Route>
+
+        {/* Catch-all: any unmatched route goes to landing */}
+        <Route path="*" element={<Landing />} />
       </Routes>
     </BrowserRouter>
   );

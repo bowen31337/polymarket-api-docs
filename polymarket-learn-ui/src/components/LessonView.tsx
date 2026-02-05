@@ -220,10 +220,10 @@ export const LessonView = () => {
                     <h2 className="text-2xl font-bold text-zinc-300 mb-2">Lesson not found</h2>
                     <p className="text-zinc-500 mb-6">The lesson you're looking for doesn't exist.</p>
                     <Link
-                        to="/learn"
+                        to="/"
                         className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors"
                     >
-                        <ArrowLeft className="w-4 h-4" /> Back to Learn
+                        <ArrowLeft className="w-4 h-4" /> Back to Home
                     </Link>
                 </div>
             </div>
@@ -258,10 +258,10 @@ export const LessonView = () => {
             <div ref={containerRef} className="max-w-3xl mx-auto px-6 py-8 lg:py-12">
                 {/* Breadcrumb */}
                 <nav className="flex items-center gap-2 text-sm text-zinc-500 mb-6">
-                    <Link to="/learn" className="hover:text-white transition-colors">Learn</Link>
+                    <Link to="/" className="hover:text-white transition-colors">Home</Link>
                     <ChevronRight className="w-3 h-3" />
                     <Link
-                        to={`/learn/${module.category}`}
+                        to={`/lessons/${module.category}`}
                         className="hover:text-white transition-colors capitalize"
                     >
                         {module.category.replace('-', ' ')}
@@ -360,11 +360,10 @@ export const LessonView = () => {
                             announce(`${module.title} marked as complete`);
                         }}
                         disabled={lessonIsCompleted}
-                        className={`flex items-center gap-3 px-6 py-3 rounded-xl font-medium transition-all ${
-                            lessonIsCompleted
-                                ? 'bg-green-500/10 text-green-400 border border-green-500/30 cursor-default'
-                                : 'bg-blue-600 hover:bg-blue-500 text-white hover:scale-105'
-                        }`}
+                        className={`flex items-center gap-3 px-6 py-3 rounded-xl font-medium transition-all ${lessonIsCompleted
+                            ? 'bg-green-500/10 text-green-400 border border-green-500/30 cursor-default'
+                            : 'bg-blue-600 hover:bg-blue-500 text-white hover:scale-105'
+                            }`}
                     >
                         {lessonIsCompleted ? (
                             <>
@@ -385,7 +384,7 @@ export const LessonView = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {prevModule ? (
                             <Link
-                                to={`/learn/${prevModule.category}/${prevModule.slug}`}
+                                to={`/lessons/${prevModule.category}/${prevModule.slug}`}
                                 className="group p-4 rounded-xl bg-zinc-900/50 border border-zinc-800 hover:border-zinc-700 transition-all"
                             >
                                 <div className="flex items-center gap-2 text-xs text-zinc-500 mb-2">
@@ -399,7 +398,7 @@ export const LessonView = () => {
 
                         {nextModule ? (
                             <Link
-                                to={`/learn/${nextModule.category}/${nextModule.slug}`}
+                                to={`/lessons/${nextModule.category}/${nextModule.slug}`}
                                 className="group p-4 rounded-xl bg-zinc-900/50 border border-zinc-800 hover:border-blue-500/50 transition-all md:text-right"
                             >
                                 <div className="flex items-center justify-end gap-2 text-xs text-zinc-500 mb-2">

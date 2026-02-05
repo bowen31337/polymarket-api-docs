@@ -114,7 +114,7 @@ export const WelcomeModal = () => {
                                     I'll explore on my own
                                 </button>
                                 <Link
-                                    to="/learn/get-started/what-is-polymarket"
+                                    to="/lessons/get-started/what-is-polymarket"
                                     onClick={handleDismiss}
                                     className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-medium transition-colors"
                                 >

@@ -24,7 +24,7 @@ The prices displayed on Polymarket are the midpoint of the bid-ask spread in the
 
 Like the stock market, prices on Polymarket are a function of realtime supply & demand.
 
-<VideoPlayer src="https://www.youtube.com/embed/v0CvPEYBzTI?si=9cirMPQ72orQzLyS" />
+<videoplayer src="https://www.youtube.com/embed/v0CvPEYBzTI?si=9cirMPQ72orQzLyS" />
 
 ### Prices = Probabilities
 

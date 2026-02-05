@@ -157,7 +157,7 @@ export const Search = ({ isOpen, onClose }: SearchProps) => {
                     break;
                 case 'Enter':
                     if (results[selectedIndex]) {
-                        navigate(`/learn/${results[selectedIndex].category}/${results[selectedIndex].slug}`);
+                        navigate(`/lessons/${results[selectedIndex].category}/${results[selectedIndex].slug}`);
                         onClose();
                     }
                     break;
@@ -237,12 +237,12 @@ export const Search = ({ isOpen, onClose }: SearchProps) => {
                                             <button
                                                 key={`${result.category}-${result.slug}`}
                                                 onClick={() => {
-                                                    navigate(`/learn/${result.category}/${result.slug}`);
+                                                    navigate(`/lessons/${result.category}/${result.slug}`);
                                                     onClose();
                                                 }}
                                                 className={`w-full text-left p-3 rounded-xl transition-colors flex items-start gap-3 ${index === selectedIndex
-                                                        ? 'bg-blue-600/20 border border-blue-500/30'
-                                                        : 'hover:bg-zinc-800'
+                                                    ? 'bg-blue-600/20 border border-blue-500/30'
+                                                    : 'hover:bg-zinc-800'
                                                     }`}
                                             >
                                                 <FileText className="w-5 h-5 text-zinc-500 flex-shrink-0 mt-0.5" />
