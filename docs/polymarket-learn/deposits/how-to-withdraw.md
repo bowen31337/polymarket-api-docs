@@ -24,8 +24,6 @@ Withdrawing from Polymarket is simple, instant, and free.
   </Steps.Step>
 </Steps>
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/fAXn0LCPTgA?si=JsYilGM3h0jSNBZa" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen />
-
 <Note>
   Note: When withdrawing USDC.e (bridged USDC) is swapped through the [Uniswap v3 pool](https://polygonscan.com/address/0xd36ec33c8bed5a9f7b6630855f1533455b98a418)
   for USDC (native) (the UI enforces less than 10bp difference in output

@@ -22,8 +22,6 @@ Polymarket utilizes USDC on the Polygon network for transactions. By using USDC 
 
 ### How to purchase and deposit USDC
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/IlDLdqT8RjU?si=2f0ze0d-SQznVP_N" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen />
-
 USDC is available on most major exchanges, including Coinbase.
 
 If your exchange supports sending or withdrawing to Polygon, we recommend this option for faster and fee-free transactions. Alternatively, you can deposit USDC via the Ethereum network.

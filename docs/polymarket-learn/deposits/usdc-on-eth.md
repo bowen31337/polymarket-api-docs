@@ -6,8 +6,6 @@
 
 > How to deposit USDC on the Ethereum Network to your Polymarket account.
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/igx1J2ugFIg?si=gOBDPFnXZTLoRLGM" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen />
-
 Depositing USDC on the Ethereum network to Polymarket will automatically bridge your funds to the Polygon network.
 
 <Steps>

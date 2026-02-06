@@ -8,10 +8,6 @@
 
 Once you've [signed up](../get-started/how-to-signup) and [deposited funds](../get-started/how-to-deposit), you're ready to start trading on Polymarket. Here's a step-by-step guide to get you started.
 
-## Video guide
-
-<iframe width="560" height="315" src="https://www.youtube.com/embed/1lFgkHLqo28?si=i7e61-roRsOVeRMW" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen />
-
 ## Walkthrough
 
 Before trading, you'll have to visit the [markets page](https://polymarket.com/markets) to see all available markets. Use the search, sort, and filter tools to narrow down your options and find a market that interests you.

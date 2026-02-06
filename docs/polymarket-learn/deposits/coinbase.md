@@ -12,8 +12,6 @@
 
 Depositing directly to Polymarket from Coinbase is simple and easy. If you need help creating a Coinbase account, see their [guide on Coinbase.com](https://help.coinbase.com/en/coinbase/getting-started)
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/IlDLdqT8RjU?si=v8iHe20FNqob_Cgr" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen />
-
 <Steps>
   <Steps.Step>
     Login to <ExternalLink href="https://coinbase.com">Coinbase</ExternalLink>, and click "**Transfer**"
@@ -39,8 +37,6 @@ Depositing directly to Polymarket from Coinbase is simple and easy. If you need 
 If something went wrong along the way, we recommend reaching to Coinbase support.
 
 ## Transfering to Polymarket
-
-<videoplayer src="https://www.youtube.com/embed/O6HaKdE9d80?si=NwuCGTzcilUhVQwg" />
 
 <Steps>
   <Steps.Step>

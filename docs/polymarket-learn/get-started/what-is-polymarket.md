@@ -22,8 +22,6 @@ Studies show prediction markets are often more accurate than pundits because the
 
 Prices = Probabilities.
 
-<videoplayer src="https://www.youtube.com/embed/v0CvPEYBzTI?si=9cirMPQ72orQzLyS" />
-
 *Prices (odds) on Polymarket represent the current probability of an event occurring.* For example, in a market predicting whether the Miami Heat will win the 2025 NBA Finals, if YES shares are trading at 18 cents, it indicates a 18% chance of Miami winning.
 
 These odds are determined by what price other Polymarket users are currently willing to buy & sell those shares at. Just how stock exchanges don't "set" the prices of stocks, Polymarket does not set prices / odds - they're a function of supply & demand.

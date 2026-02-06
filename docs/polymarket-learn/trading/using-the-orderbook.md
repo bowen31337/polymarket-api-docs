@@ -43,8 +43,6 @@ When you have an open order, you'll find it displayed just below the Order Book 
 
 To cancel the order, you can simply click the red **x** button alongside the order.
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/KuA2UdUfZls?si=RUpuzqB9lbBB2pl9" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen />
-
 If you have open orders across multiple markets, you can easily manage and monitor them all from the [Portfolio page](https://polymarket.com/portfolio?tab=Open+orders).
 
 Nice! You can officially call yourself an advanced trader.
